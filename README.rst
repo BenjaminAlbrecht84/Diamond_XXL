@@ -2,7 +2,7 @@
 
 DIAMOND_XXL is an extension of the BLAST-compatible local aligner DIAMOND for mapping **long** DNA query sequences (up to 10kb) against a protein database. In contrast to DIAMOND, DIAMOND_XLL only reports high scoring alignments of query sequences covering **whole** protein sequences. 
 
-Usually, due to some typical properties of the query sequences, such as high numbers of insertions and deletions leading to *Frameshifts* within the corresponding protein sequence, the underlying algorithm of DIAMOND is not suitable for this purpose. However, in the beginning DIAMOND_XXL still makes use of DIAMOND for calculating an initial set of protein sequences, which is then further examined. Note that since DIAMOND is a pretty fast mapping tool (approx. 20,000 times faster than BLAST), this initial step, which is known to be of high computational complexity, is performed in a very efficient way. 
+Usually, due to some typical properties of the query sequences, such as high numbers of insertions and deletions leading to *Frameshifts* within the corresponding protein sequence, the underlying algorithm of DIAMOND is not suitable for this purpose. However, in the beginning DIAMOND_XXL still makes use of DIAMOND for calculating an initial set of protein sequences, which is then further examined. Note that since DIAMOND is a pretty fast mapping tool (approx. 20,000 times faster than BLAST), this initial step, which is of high computational complexity, is performed in a very efficient way. 
 
 Download & Installation
 =======================
