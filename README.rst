@@ -30,9 +30,9 @@ This will create a DIAMOND database file with the specific name (``nr.dmnd``).
 
 The alignment task can then be initiated by running DIMAOND_XXL like this::
 
-    $ java -jar diamond_xxl.jar -exe <diamond_binary> -d nr.dmnd -q reads.fna -a <output_folder>
+    $ java -Xmx 10g -jar diamond_xxl.jar -exe <diamond_binary> -d nr.dmnd -q reads.fna -a <output_folder>
 
-where the ``-exe`` option specifies the path to the DIAMOND binary file and the ``-a`` option specifies the path to the output folder. Please get sure that you have installed DIAMOND v0.8.17 or higher, otherwise the program will not be able to read the ``nr.dmnd`` file.
+where the ``-exe`` option specifies the path to the DIAMOND binary file and the ``-a`` option specifies the path to the output folder. Please get sure that you have installed DIAMOND v0.8.17 or higher, otherwise the program will not be able to read the ``nr.dmnd`` file. Moreover, please do not forget to ensure that the JVM gets enough memory. 
 
 The output is automatically written into the output folder specified by the ``-a`` option. It consists of the two files ``reads.sam`` and ``reads.runs``.
 
