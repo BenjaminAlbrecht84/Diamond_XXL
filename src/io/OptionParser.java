@@ -4,7 +4,7 @@ import java.io.File;
 
 public class OptionParser {
 
-	private int numOfThreads = Runtime.getRuntime().availableProcessors(), length = -1;
+	private int numOfThreads = Runtime.getRuntime().availableProcessors(), length = 1000;
 	private File dbFile = null, queryFile = null, alignmentFile = null, exeFile = null;
 	private double maxEValue = 0.001;
 	private int minSumScore = 30;
@@ -97,8 +97,6 @@ public class OptionParser {
 			System.err.println("ERROR: missing query input file in FASTA or FASTQ format (Option -q)");
 		if (alignmentFile == null)
 			System.err.println("ERROR: missing path to output file in SAM format (Option -a)");
-		if (length == -1)
-			System.err.println("ERROR: missing shredding length (Option -l)");
 
 		if (exeFile == null || dbFile == null || queryFile == null || alignmentFile == null || length == -1) {
 			printOptions();
