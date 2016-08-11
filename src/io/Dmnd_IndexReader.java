@@ -9,13 +9,14 @@ import java.nio.ByteOrder;
 import java.util.HashMap;
 import java.util.TreeMap;
 import java.util.Vector;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Dmnd_IndexReader {
 
 	private File dmndFile;
 
-	private TreeMap<Integer, Long> giIndex;
-	// private ConcurrentHashMap<Integer, Long> giIndex;
+	// private TreeMap<Integer, Long> giIndex;
+	private ConcurrentHashMap<Integer, Long> giIndex;
 	private Vector<long[]> seqLocations;
 
 	public Dmnd_IndexReader(File dmndFile) {
@@ -25,7 +26,7 @@ public class Dmnd_IndexReader {
 	public void createIndex() {
 
 		parseSeqLocations();
-		giIndex = new TreeMap<Integer, Long>();
+		giIndex = new ConcurrentHashMap<Integer, Long>();
 		giIndex.putAll(mapGIs());
 		seqLocations = null;
 
@@ -45,8 +46,6 @@ public class Dmnd_IndexReader {
 		seqLocations = new Vector<long[]>();
 
 		try {
-
-			// System.out.println("Parsing sequence bounds...");
 
 			// parsing sequence bounds
 			InputStream is = new BufferedInputStream(new FileInputStream(dmndFile));
@@ -79,8 +78,7 @@ public class Dmnd_IndexReader {
 				long totalReadBytes = 0;
 
 				if (skipped != offset)
-					throw new IllegalArgumentException(
-							"ERROR: Too less bytes have been skipped! " + skipped + " " + offset);
+					throw new IllegalArgumentException("ERROR: Too less bytes have been skipped! " + skipped + " " + offset);
 
 				while ((readChars = is.read(buffer.array())) != -1) {
 
@@ -93,21 +91,9 @@ public class Dmnd_IndexReader {
 							seqLocations.add(loc);
 						}
 
-						// totalReadBytes += 16;
-						// int proc = (int) Math.floor(((double)
-						// (totalReadBytes) / (double) totalBytes) * 100.);
-						// if (proc % 10 == 0 && proc > lastProc) {
-						// System.out.println("OUTPUT>" + proc + "% of the
-						// bounds parsed...");
-						// lastProc = proc;
-						// }
-
 					}
 
 				}
-
-				// System.out.println("OUTPUT>" + seqLocations.size() + "
-				// sequence bounds stored!");
 
 			} finally {
 				is.close();
@@ -118,11 +104,11 @@ public class Dmnd_IndexReader {
 		}
 	}
 
-	private TreeMap<Integer, Long> mapGIs() {
+	private ConcurrentHashMap<Integer, Long> mapGIs() {
 
 		System.out.println("Indexing reference database...");
 
-		TreeMap<Integer, Long> giToPointer = new TreeMap<Integer, Long>();
+		ConcurrentHashMap<Integer, Long> giToPointer = new ConcurrentHashMap<Integer, Long>();
 		try {
 			InputStream is = new BufferedInputStream(new FileInputStream(dmndFile));
 			try {
@@ -149,6 +135,7 @@ public class Dmnd_IndexReader {
 								int gi = Integer.parseInt(giBuffer.toString());
 								giBuffer = new StringBuffer();
 								giToPointer.put(gi, seqLocations.get(lastK)[0]);
+								lastK++;
 								break;
 							}
 							giBuffer = giBuffer.append((char) val);
@@ -158,7 +145,7 @@ public class Dmnd_IndexReader {
 					// find new giNumbers in buffer
 					for (int k = lastK; k < seqLocations.size(); k++) {
 
-						k = seqLocations.get(k) == null ? k + 1 : k;
+						// k = seqLocations.get(k) == null ? k + 1 : k;
 						long[] loc = seqLocations.get(k);
 						long giStart = (loc[0] + loc[1] + 5) - (allocSize * iterations);
 
@@ -168,7 +155,11 @@ public class Dmnd_IndexReader {
 							break;
 						}
 
-						for (long i = giStart; i < readBytes; i++) {
+						boolean doBreak = false;
+						for (long i = giStart; i <= readBytes; i++) {
+
+							if (doBreak = (i == readBytes))
+								break;
 
 							int val = (int) buffer.get((int) i);
 							if (val == 124) {
@@ -185,6 +176,8 @@ public class Dmnd_IndexReader {
 						}
 
 						lastK = k;
+						if (doBreak)
+							break;
 
 					}
 
@@ -209,8 +202,7 @@ public class Dmnd_IndexReader {
 		}
 
 		int proc = (int) Math.ceil(((double) (giToPointer.keySet().size()) / (double) seqLocations.size()) * 100.);
-		System.out.println("OUTPUT>Finally, " + proc + "% (" + giToPointer.keySet().size() + "/" + seqLocations.size()
-				+ ") of the GI's mapped...");
+		System.out.println("OUTPUT>Finally, " + proc + "% (" + giToPointer.keySet().size() + "/" + seqLocations.size() + ") of the GI's mapped...");
 
 		return giToPointer;
 
