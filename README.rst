@@ -51,8 +51,8 @@ Option     Default Description
 -a                 Path to output folder.
 -p         max     Number of CPU threads.
 -l         1000    Length of the shredded reads. 
--s         30      Minimum bit score to keep a run of matches.
--e         0.001   Maximum sum probability to keep run of matches. 
+-s         30      Minimum sumScore to keep a run of matches.
+-e         0.001   Maximum sumProbability to keep a run of matches. 
 ========== ======= ===========
 
 DIAMOND_XLL initially calls DIAMOND with its default parameters scoring an alignment with the *BLOSUM62* Matrix, a *gap open penalty* of 11 and a *gap extension penalty* of 1. 
