@@ -23,7 +23,7 @@ In order to set up a reference database for DIAMOND_XXL, first DIAMOND has to be
 
     $ diamond makedb --in nr.faa -d nr
 
-This will create a DIAMOND database file with the specific name (``nr.dmnd``). 
+This will create a DIAMOND database file with name ``nr.dmnd``. 
 
 2. Aligning reads against the reference database
 ------------------------------------------------
@@ -47,7 +47,7 @@ Option     Default Description
 ========== ======= ===========
 -exe               Path to DIAMOND binary file.
 -d                 Path to DIAMOND database file.
--q                 Path to query input file in FASTA or FASTQ format (may be gzip compressed).
+-q                 Path to query input file in FASTA or FASTQ format.
 -a                 Path to output folder.
 -p         max     Number of CPU threads.
 -l         1000    Length of the shredded reads. 
