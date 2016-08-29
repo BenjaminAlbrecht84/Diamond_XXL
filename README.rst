@@ -55,4 +55,4 @@ Option     Default Description
 -e         0.001   Maximum sumProbability to keep a run of matches. 
 ========== ======= ===========
 
-DIAMOND_XLL initially calls DIAMOND with its default parameters scoring an alignment with the *BLOSUM62* Matrix, a *gap open penalty* of 11 and a *gap extension penalty* of 1. 
+DIAMOND_XXL initially calls DIAMOND with its default parameters scoring an alignment with the *BLOSUM62* Matrix, a *gap open penalty* of 11 and a *gap extension penalty* of 1. 
