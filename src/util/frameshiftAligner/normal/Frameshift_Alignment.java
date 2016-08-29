@@ -1,4 +1,4 @@
-package util.frameshiftAligner;
+package util.frameshiftAligner.normal;
 
 import util.CodonTranslator;
 import util.ScoringMatrix;
@@ -6,13 +6,12 @@ import util.ScoringMatrix;
 public class Frameshift_Alignment {
 
 	/*
-	 * Approach following the work 'Alignments of DNA and protein sequences
-	 * containing frameshift errors', Guan X. Uberbacher EC., Comput Appl
-	 * Biosci. 1996 Feb;12(1):31-40.
+	 * Approach following the work 'Alignments of DNA and protein sequences containing frameshift errors', Guan X. Uberbacher EC., Comput Appl Biosci.
+	 * 1996 Feb;12(1):31-40.
 	 */
 
 	public enum AliMode {
-		GLOBAL, FREESHIFT
+		GLOBAL, FREESHIFT_LEFT, FREESHIFT_RIGHT
 	};
 
 	private ScoringMatrix scoringMatrix;
@@ -25,12 +24,19 @@ public class Frameshift_Alignment {
 		this.delta = delta;
 	}
 
-	public String[] run(String s1, String s2, AliMode mode) {
-		
+	public Object[] run(String s1, String s2, AliMode mode) {
+
 		String[] frameSeqs = cmpDiffFrameSeqs(s1);
 		String s11 = frameSeqs[0];
 		String s12 = frameSeqs[1];
 		String s13 = frameSeqs[2];
+
+		if (mode == AliMode.FREESHIFT_LEFT) {
+			s11 = new StringBuffer(s11).reverse().toString();
+			s12 = new StringBuffer(s12).reverse().toString();
+			s13 = new StringBuffer(s13).reverse().toString();
+			s2 = new StringBuffer(s2).reverse().toString();
+		}
 
 		// initialization of D1, Q1, P1
 		int n1 = s11.length() + 1;
@@ -76,11 +82,10 @@ public class Frameshift_Alignment {
 
 		// performing traceback
 		Frameshift_Traceback traceback = new Frameshift_Traceback(scoringMatrix, gapOpen, gapExtend, delta);
-		int[] startingCell = mode == AliMode.GLOBAL ? getStartingCell_Global(D1, D2, D3, n1, n2)
-				: getStartingCell_FreeShift(D1, D2, D3, n2);
-		String[] alignment = traceback.run(D1, Q1, P1, D2, Q2, P2, D3, Q3, P3, s11, s12, s13, s2, startingCell);
+		int[] startingCell = mode == AliMode.GLOBAL ? getStartingCell_Global(D1, D2, D3, n1, n2) : getStartingCell_FreeShift(D1, D2, D3, n2);
+		Object[] alignment = traceback.run(D1, Q1, P1, D2, Q2, P2, D3, Q3, P3, s11, s12, s13, s2, startingCell, mode);
 
-//		System.out.println("\n" + alignment[0] + "\n" + alignment[1] + "\n" + alignment[2] + " \n" + alignment[3]);
+		// System.out.println("\n" + alignment[0] + "\n" + alignment[1] + "\n" + alignment[2] + " \n" + alignment[3]);
 
 		return alignment;
 
@@ -100,7 +105,7 @@ public class Frameshift_Alignment {
 		return res;
 	}
 
-	// determine max cell in last rows
+	// determine max cell in last column
 	private int[] getStartingCell_FreeShift(int[][] D1, int[][] D2, int[][] D3, int n2) {
 		int[] max = getMaxInColumn(D1, n2 - 1, 1);
 		for (int f = 2; f < 4; f++) {
@@ -144,8 +149,8 @@ public class Frameshift_Alignment {
 	}
 
 	// dynamic programming approach following Guan&Uberbacher (1996)
-	private int[] cmpMatrices(int[][] D1, int[][] P1, int[][] Q1, int[][] D2, int[][] P2, int[][] Q2, int[][] D3,
-			int[][] P3, int[][] Q3, int i, int j, String s, String s2, int frame) {
+	private int[] cmpMatrices(int[][] D1, int[][] P1, int[][] Q1, int[][] D2, int[][] P2, int[][] Q2, int[][] D3, int[][] P3, int[][] Q3, int i,
+			int j, String s, String s2, int frame) {
 
 		// boolean debug = (frame == 3 && i == 5 && j == 5);
 		// String log = "";
@@ -161,10 +166,10 @@ public class Frameshift_Alignment {
 		int t1 = Math.max(sub(D2[i - 1][j], w(1)), sub(P2[i - 1][j], gapExtend));
 		int t2 = Math.max(sub(D2[i][j - 1], w(1)), sub(Q2[i][j - 1], gapExtend));
 		int t3 = Math.max(m2, Math.max(t1, t2));
-		if (t3 - delta > D1[i][j]) {
-			P1[i][j] = t1 - delta;
-			Q1[i][j] = t2 - delta;
-			D1[i][j] = t3 - delta;
+		if (sub(t3, delta) > D1[i][j]) {
+			P1[i][j] = sub(t1, delta);
+			Q1[i][j] = sub(t2, delta);
+			D1[i][j] = sub(t3, delta);
 		}
 
 		// checking for shifting from frame 3 into frame 1
@@ -172,10 +177,10 @@ public class Frameshift_Alignment {
 		t1 = Math.max(sub(D3[i - 1][j], w(1)), sub(P3[i - 1][j], gapExtend));
 		t2 = Math.max(sub(D3[i][j - 1], w(1)), sub(Q3[i][j - 1], gapExtend));
 		t3 = Math.max(m3, Math.max(t1, t2));
-		if (t3 - delta > D1[i][j]) {
-			P1[i][j] = t1 - delta;
-			Q1[i][j] = t2 - delta;
-			D1[i][j] = t3 - delta;
+		if (sub(t3, delta) > D1[i][j]) {
+			P1[i][j] = sub(t1, delta);
+			Q1[i][j] = sub(t2, delta);
+			D1[i][j] = sub(t3, delta);
 		}
 
 		int[] res = { P1[i][j], Q1[i][j], D1[i][j] };
@@ -200,7 +205,7 @@ public class Frameshift_Alignment {
 		}
 	}
 
-	// save summation taking care of overflow
+	// safe summation taking care of overflow
 	private int add(int a, int b) {
 		int res = a + b;
 		if (b >= 0 && res < a)
@@ -210,7 +215,7 @@ public class Frameshift_Alignment {
 		return res;
 	}
 
-	// save subtraction taking care of underflow
+	// safe subtraction taking care of underflow
 	private int sub(int a, int b) {
 		int res = a - b;
 		if (b >= 0 && res > a)

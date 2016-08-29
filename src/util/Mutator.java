@@ -16,9 +16,8 @@ public class Mutator {
 			if (Math.random() < error_rate)
 				positions.add(i);
 		}
-		for (int pos : positions) {
+		for (int pos : positions) 
 				seq = deletePos(seq, pos);
-		}
 		return seq;
 	}
 

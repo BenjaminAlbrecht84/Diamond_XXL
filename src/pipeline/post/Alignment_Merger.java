@@ -3,9 +3,12 @@ package pipeline.post;
 import java.io.File;
 import java.io.RandomAccessFile;
 import java.util.BitSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import io.daa.DAA_Reader;
 import pipeline.post.Hit.HitType;
+import util.CompressAlignment;
 import util.ReconstructAlignment;
 import util.ScoringMatrix;
 
@@ -73,7 +76,7 @@ public class Alignment_Merger {
 			query_deletions.set(index, h2.isQueryDeletion(i));
 		}
 
-		int query_length = h1.getQuery_length() + h2.getQuery_length() - o2 + h2.numOfQueryDeletions(0, o2);
+		int queryLength = h1.getQuery_length() + h2.getQuery_length() - o2;
 
 		// computing new bit score
 		double s = rawScore;
@@ -85,9 +88,9 @@ public class Alignment_Merger {
 		String[] aliStrings2 = daaReader == null ? h2.getAlignmentStrings(rafSAM) : h2.getAlignmentStrings(rafDAA, daaReader);
 		String[] aliStrings = mergeAliStrings(aliStrings1, aliStrings2, o2, matrix);
 
-		// initialize new hit
+		// initializing new hit
 		Hit h = new Hit(h1.getId(), h1.getRef_start(), h2.getRef_end(), bitScore, rawScore, h1.getFile_pointer(), h1.getAccessPoint(),
-				h1.getQuery_start(), h1.getRef_length(), query_length, scores, query_insertions, query_deletions);
+				h1.getQuery_start(), h1.getRef_length(), queryLength, scores, query_insertions, query_deletions);
 		h.copyAliStrings(aliStrings);
 		h.setHitType(HitType.Merged);
 
@@ -97,24 +100,24 @@ public class Alignment_Merger {
 
 	private String[] mergeAliStrings(String[] aliStrings1, String[] aliStrings2, int o, ScoringMatrix matrix) {
 
-		// reconstruct both alignments
+		// reconstructing both alignments
 		Object[] res1 = new ReconstructAlignment(matrix).run(aliStrings1[1], aliStrings1[0], aliStrings1[2]);
 		String[] ali1 = { (String) res1[4], (String) res1[5] };
 		Object[] res2 = new ReconstructAlignment(matrix).run(aliStrings2[1], aliStrings2[0], aliStrings2[2]);
 		String[] ali2 = { (String) res2[4], (String) res2[5] };
 
-		// merge both alignments
+		// merging both alignments
 		String[] ali = mergeAlignments(ali1, ali2, o);
 
-		// compute alignment strings
-		String[] aliStrings = new String[3];
-		aliStrings[0] = deriveCIGAR(ali);
-		aliStrings[1] = deriveSEQ(ali);
-		aliStrings[2] = deriveMD(ali);
-
+		// System.out.println("\n" + ali1[0] + "\n" + ali1[1]);
+		// String pad = "";
+		// while (pad.length() < ali1[0].length() - o)
+		// pad = pad.concat(" ");
+		// System.out.println(pad + "" + ali2[0] + "\n" + pad + "" + ali2[1]);
 		// System.out.println(ali[0] + "\n" + ali[1]);
-		// System.out.println(aliStrings[0] + "\n" + aliStrings[1] + "\n" +
-		// aliStrings[2]);
+
+		// compressing merged alignment
+		String[] aliStrings = new CompressAlignment().run(ali);
 
 		return aliStrings;
 	}
@@ -124,79 +127,6 @@ public class Alignment_Merger {
 		String s2 = ali1[1].concat(ali2[1].substring(o));
 		String[] ali = { s1, s2 };
 		return ali;
-	}
-
-	private String deriveSEQ(String[] ali) {
-		String seq = ali[0].replaceAll("-", "");
-		return seq;
-	}
-
-	private String deriveMD(String[] ali) {
-		StringBuffer md = new StringBuffer("");
-		char lastType = '-';
-		int num = 0;
-		for (int i = 0; i < ali[0].length(); i++) {
-			char type = getMDType(ali[0].charAt(i), ali[1].charAt(i));
-			if (type == 'M')
-				num++;
-			else if (type != 'I') {
-				if (num != 0) {
-					md = md.append(num);
-					num = 0;
-				}
-				if (type == 'X') {
-					if (lastType == 'D')
-						md.append('0');
-					md.append(ali[1].charAt(i));
-				}
-				if (type == 'D') {
-					if (lastType != 'D')
-						md.append('^');
-					md.append(ali[1].charAt(i));
-				}
-			}
-			if (type != 'I')
-				lastType = type;
-		}
-		if (lastType == 'M')
-			md = md.append(num);
-		return md.toString();
-	}
-
-	private char getMDType(char c1, char c2) {
-		if (c1 == '-')
-			return 'D';
-		if (c2 == '-')
-			return 'I';
-		if (c1 != c2)
-			return 'X';
-		return 'M';
-	}
-
-	private String deriveCIGAR(String[] ali) {
-		StringBuffer cigar = new StringBuffer("");
-		char lastType = getCIGARType(ali[0].charAt(0), ali[1].charAt(0));
-		int num = 1;
-		for (int i = 1; i < ali[0].length(); i++) {
-			char type = getCIGARType(ali[0].charAt(i), ali[1].charAt(i));
-			if (type == lastType)
-				num++;
-			else {
-				cigar = cigar.append(num + "" + lastType);
-				num = 1;
-			}
-			lastType = type;
-		}
-		cigar = cigar.append(num + "" + lastType);
-		return cigar.toString();
-	}
-
-	private char getCIGARType(char c1, char c2) {
-		if (c1 == '-')
-			return 'D';
-		if (c2 == '-')
-			return 'I';
-		return 'M';
 	}
 
 }

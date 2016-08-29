@@ -7,7 +7,7 @@ public class OptionParser {
 	private int numOfThreads = Runtime.getRuntime().availableProcessors(), length = 1000;
 	private File dbFile = null, queryFile = null, alignmentFile = null, exeFile = null;
 	private double maxEValue = 0.001;
-	private int minSumScore = 30;
+	private int minSumScore = 30, minCoverage = 95;
 
 	public int run(String[] args) {
 
@@ -123,10 +123,10 @@ public class OptionParser {
 
 	private void printOptions() {
 		System.out.println("Mandatory Options:");
-		System.out.println("-exe \t Path to the DIAMOND executable.");
-		System.out.println("-d \t Path to DIAMOND database file (not including the file extension .dmnd).");
-		System.out.println("-q \t Path to query input file in FASTA or FASTQ format (may be gzip compressed).");
-		System.out.println("-a \t Path to output file in SAM format (extension .daa will be appended).");
+		System.out.println("-exe \t Path to the DIAMOND binary file.");
+		System.out.println("-d \t Path to DIAMOND database file.");
+		System.out.println("-q \t Path to query input file in FASTA or FASTQ format.");
+		System.out.println("-a \t Path to output folder.");
 	}
 
 	public File getExeFile() {
@@ -159,6 +159,15 @@ public class OptionParser {
 
 	public int getMinSumScore() {
 		return minSumScore;
+	}
+
+	public int getMinCoverage() {
+		return minCoverage;
+	}
+
+	public int getDelta() {
+		// TODO Auto-generated method stub
+		return 0;
 	}
 
 }

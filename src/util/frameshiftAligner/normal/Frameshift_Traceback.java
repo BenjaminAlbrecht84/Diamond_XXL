@@ -1,8 +1,9 @@
-package util.frameshiftAligner;
+package util.frameshiftAligner.normal;
 
 import java.util.HashMap;
 
 import util.ScoringMatrix;
+import util.frameshiftAligner.normal.Frameshift_Alignment.AliMode;
 
 public class Frameshift_Traceback {
 
@@ -16,8 +17,8 @@ public class Frameshift_Traceback {
 		this.delta = delta;
 	}
 
-	public String[] run(int[][] D1, int[][] Q1, int[][] P1, int[][] D2, int[][] Q2, int[][] P2, int[][] D3, int[][] Q3,
-			int[][] P3, String s11, String s12, String s13, String s2, int[] startingCell) {
+	public Object[] run(int[][] D1, int[][] Q1, int[][] P1, int[][] D2, int[][] Q2, int[][] P2, int[][] D3, int[][] Q3, int[][] P3, String s11,
+			String s12, String s13, String s2, int[] startingCell, AliMode mode) {
 
 		HashMap<Integer, int[][][]> frameToMatrix = new HashMap<Integer, int[][][]>();
 		int[][][] frame1Matrices = { D1, Q1, P1 };
@@ -39,14 +40,21 @@ public class Frameshift_Traceback {
 
 		recursiveCall(frameToMatrix, frameToSequence, s2, startingCell, alignment);
 
-		String aliScore = startingCell[3] + "";
-		String[] res = { alignment[0].toString(), alignment[1].toString(), alignment[2].toString(), aliScore };
+		if (mode == AliMode.FREESHIFT_LEFT) {
+			alignment[0] = alignment[0].reverse();
+			alignment[1] = alignment[1].reverse();
+			alignment[2] = alignment[2].reverse();
+		}
+
+		int qAligned = startingCell[0];
+		int aliScore = startingCell[3];
+		Object[] res = { alignment[0].toString(), alignment[1].toString(), alignment[2].toString(), aliScore, qAligned };
 		return res;
 
 	}
 
-	private void recursiveCall(HashMap<Integer, int[][][]> frameToMatrix, HashMap<Integer, String> frameToSequence,
-			String s2, int[] cell, StringBuffer[] alignment) {
+	private void recursiveCall(HashMap<Integer, int[][][]> frameToMatrix, HashMap<Integer, String> frameToSequence, String s2, int[] cell,
+			StringBuffer[] alignment) {
 
 		int i = cell[0];
 		int j = cell[1];
@@ -92,8 +100,8 @@ public class Frameshift_Traceback {
 
 	}
 
-	private int[] backtrace(int[][] D1, int[][] D2, int[][] Q2, int[][] P2, int i, int j, StringBuffer[] alignment,
-			String s1, String s2, int frame, int curFrame, int penalty) {
+	private int[] backtrace(int[][] D1, int[][] D2, int[][] Q2, int[][] P2, int i, int j, StringBuffer[] alignment, String s1, String s2, int frame,
+			int curFrame, int penalty) {
 
 		// System.out.println("\n[" + i + "," + j + "," + frame + "]: " +
 		// D1[i][j]);
@@ -127,9 +135,7 @@ public class Frameshift_Traceback {
 			else {
 
 				// checking diagonal
-				if (i != 0
-						&& j != 0
-						&& D2[i - 1][j - 1] + scoringMatrix.getScore(s1.charAt(i - 1), s2.charAt(j - 1)) - penalty == D1[i][j]) {
+				if (i != 0 && j != 0 && D2[i - 1][j - 1] + scoringMatrix.getScore(s1.charAt(i - 1), s2.charAt(j - 1)) - penalty == D1[i][j]) {
 					alignment[0] = alignment[0].insert(0, s1.charAt(i - 1));
 					alignment[1] = alignment[1].insert(0, s2.charAt(j - 1));
 					alignment[2] = alignment[2].insert(0, curFrame);

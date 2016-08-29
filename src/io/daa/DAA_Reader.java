@@ -38,11 +38,12 @@ public class DAA_Reader {
 
 	public ConcurrentHashMap<String, ReadHits> parseAllHits(int cores) {
 
-		System.out.println("Parsing Diamond output...");
+		System.out.println("STEP_3>Parsing DAIMOND output...");
+		long time = System.currentTimeMillis();
 
 		readMap = new ConcurrentHashMap<String, ReadHits>();
 
-		System.out.println("Parsing " + header.getNumberOfQueryRecords() + " query records...");
+		System.out.println("OUTPUT>Parsing " + header.getNumberOfQueryRecords() + " query records...");
 
 		last_p = 0;
 		allParsedRecords = new AtomicLong(0);
@@ -70,8 +71,9 @@ public class DAA_Reader {
 			e.printStackTrace();
 		}
 		executor.shutdown();
-
-		System.out.println("OUTPUT>" + 100 + "% (" + numOfRecords + "/" + numOfRecords + ") of all records parsed.");
+		
+		long runtime = (System.currentTimeMillis() - time)  / 1000;
+		System.out.println("OUTPUT>" + 100 + "% (" + numOfRecords + "/" + numOfRecords + ") of all records parsed.[" + runtime + "s]\n");
 
 		return readMap;
 

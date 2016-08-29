@@ -23,7 +23,7 @@ public class Fastq_Reader {
 			StringBuffer seq = new StringBuffer("");
 			StringBuffer qual = new StringBuffer("");
 			while ((line = buf.readLine()) != null) {
-				if (line.startsWith("@")) {
+				if (line.startsWith("@") || line.startsWith(">")) {
 					if (seq.length() != 0 && !id.isEmpty())
 						reads.add(new Read(id, seq.toString(), qual.toString()));
 					seq = new StringBuffer("");
@@ -48,26 +48,6 @@ public class Fastq_Reader {
 		return reads;
 	}
 
-	// public ConcurrentHashMap<String, Long> parseReadIDs(File fastq_File) {
-	// ConcurrentHashMap<String, Long> readToPointer = new
-	// ConcurrentHashMap<String, Long>();
-	// try {
-	// RandomAccessFile raf = new RandomAccessFile(fastq_File, "r");
-	// String line = "";
-	// while ((line = raf.readLine()) != null) {
-	// if (line.startsWith("@")) {
-	// String id = line.substring(1).split(" ")[0];
-	// readToPointer.put(id, raf.getFilePointer());
-	// }
-	// }
-	// raf.close();
-	// } catch (Exception e) {
-	// // TODO Auto-generated catch block
-	// e.printStackTrace();
-	// }
-	// return readToPointer;
-	// }
-
 	public ConcurrentHashMap<String, Long> parseReadIDs(File fastq_File) {
 		ConcurrentHashMap<String, Long> readToPointer = new ConcurrentHashMap<String, Long>();
 		try {
@@ -82,18 +62,19 @@ public class Fastq_Reader {
 			while ((readChars = raf.read(buffer.array())) != -1) {
 				for (int i = 0; i < readChars; i++) {
 					char c = (char) buffer.get(i);
-					if (parseID && c == ' ') {
+					if (parseID && (c == ' ' || c == '\n')) {
 						parseID = false;
 					} else if (parseID) {
 						buf = buf.append(c);
-					} else if (c == '@' && lineCounter == 0) {
+					} else if ((c == '@' && lineCounter == 0) || c == '>') {
 						parseID = true;
-					} else if (c == '\n' && buf.length() != 0) {
+					} 
+					if (c == '\n' && buf.length() != 0) {
 						readToPointer.put(buf.toString(), pointer + i);
 						buf = new StringBuffer();
 					}
-					if (c == '\n') 
-						lineCounter = lineCounter == 3 ? 0 : ++lineCounter;		
+					if (c == '\n')
+						lineCounter = lineCounter == 3 ? 0 : ++lineCounter;
 				}
 				pointer = raf.getFilePointer();
 			}

@@ -178,15 +178,14 @@ public class Alignment_Generator {
 									for (Hit h : allHits)
 										hitToID.put(h, h.getId());
 
-									// calculating heaviest increasing
-									// subsequence
+									// calculating heaviest increasing subsequence
 									Hit[] seq = generateHitSequence(allHits);
-									Vector<Hit> his = new Algorithm_JacobsenVo().run(seq, runRater, dir, rafSAM, rafDAA, read_name);
+									Vector<Hit> his = new Algorithm_JacobsenVo().run(seq, runRater, dir, rafSAM, rafDAA, read_name, gi);
 									for (Hit h : his)
 										h.setId(hitToID.get(h));
 
 									// store best HIS
-									Object[] res = runRater.run(his, dir, rafSAM, rafDAA, read_name);
+									Object[] res = runRater.run(his, dir, rafSAM, rafDAA, read_name, gi);
 									if (bestHIS == null || (int) res[2] > bestScore) {
 										bestHIS = his;
 										bestScore = (int) res[2];

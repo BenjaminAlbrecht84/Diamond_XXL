@@ -2,6 +2,7 @@ package pipeline.post;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.math.BigInteger;
 import java.text.DecimalFormat;
@@ -58,7 +59,7 @@ public class HitToSamConverter {
 		}
 	}
 
-	public synchronized void run(List<Hit> hits) {
+	public void run(List<Hit> hits) {
 
 		try {
 
@@ -213,14 +214,23 @@ public class HitToSamConverter {
 					rafDAA.close();
 			}
 
-			FileWriter writer = new FileWriter(out, true);
-			writer.write(buf.toString());
-			writer.close();
+			writeInFile(buf);
 
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 
+	}
+
+	private synchronized void writeInFile(StringBuffer buf) {
+		try {
+			FileWriter fW = new FileWriter(out, true);
+			fW.write(buf.toString());
+			fW.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	private String[] mySplit(String s, char c) {

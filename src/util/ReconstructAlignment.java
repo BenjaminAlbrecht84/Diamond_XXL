@@ -12,7 +12,7 @@ public class ReconstructAlignment {
 	public ReconstructAlignment(ScoringMatrix matrix) {
 		this.matrix = matrix;
 	}
-
+	
 	public Object[] run(String seq, String cigar, String md) {
 
 		// System.out.println("\n>" + seq + " " + cigar + " " + md + "\n");

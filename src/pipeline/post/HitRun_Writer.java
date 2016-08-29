@@ -44,7 +44,7 @@ public class HitRun_Writer {
 
 	}
 
-	public synchronized void run(Vector<Hit_Run> runs) {
+	public void run(Vector<Hit_Run> runs) {
 
 		try {
 
@@ -64,15 +64,24 @@ public class HitRun_Writer {
 			if (rafDAA != null)
 				rafDAA.close();
 
-			FileWriter fW = new FileWriter(out, true);
-			fW.write(buf.toString());
-			fW.close();
+			writeInFile(buf);
 
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
+	}
+
+	private synchronized void writeInFile(StringBuffer buf) {
+		try {
+			FileWriter fW = new FileWriter(out, true);
+			fW.write(buf.toString());
+			fW.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	private String getReference(Hit h, long filePointer, RandomAccessFile rafSAM, RandomAccessFile rafDAA) {

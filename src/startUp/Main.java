@@ -28,7 +28,7 @@ public class Main {
 	}
 
 	public static void main(String[] args) {
-		
+
 		ParseMode parseMode = Main.ParseMode.SAM;
 
 		// ensuring English output-style
@@ -47,6 +47,7 @@ public class Main {
 		File outputFolder = parser.getAlignmentFile();
 		double maxEValue = parser.getMaxEValue();
 		int minSumScore = parser.getMinSumScore();
+		int minCoverage = parser.getMinCoverage();
 		String queryName = queryFile.getName().split("\\.")[0];
 
 		// length/step must be a multiple of 3
@@ -83,7 +84,8 @@ public class Main {
 			readMap = daaReader.parseAllHits(cores);
 
 		// merging/selecting hits
-		Vector<Hit_Run> hitRuns = new Alignment_Generator_inParallel(readMap, scorer, samFile, daaReader, matrix, maxEValue, minSumScore).run(cores);
+		Vector<Hit_Run> hitRuns = new Alignment_Generator_inParallel(readMap, scorer, samFile, daaReader, matrix, maxEValue, minSumScore, step,
+				length).run(cores);
 
 		// completing alignments
 		File out_sam = new File(outputFolder.getAbsolutePath() + File.separator + queryName + ".sam");
@@ -91,7 +93,7 @@ public class Main {
 		File out_runs = new File(outputFolder.getAbsolutePath() + File.separator + queryName + ".runs");
 		HitRun_Writer runWriter = new HitRun_Writer(out_runs, samFile, daaReader);
 		new Alignment_Completer().run(hitRuns, queryFile, dbFile, samFile, daaReader, matrix, dR.getLambda(), dR.getK(), cores, scorer, step,
-				samConverter, runWriter, maxEValue, minSumScore);
+				samConverter, runWriter, maxEValue, minSumScore, minCoverage);
 
 		if (parseMode == ParseMode.DAA)
 			samFile.delete();

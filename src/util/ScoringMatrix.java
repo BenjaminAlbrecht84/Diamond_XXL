@@ -1,8 +1,8 @@
 package util;
 
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Vector;
 
 public class ScoringMatrix {
@@ -16,7 +16,11 @@ public class ScoringMatrix {
 		this.type = type;
 		this.gapOpen = gapOpen;
 		this.gapExtend = gapExtend;
-		parseMatrix(new File("./NCBI_ScoringMatrices/" + type));
+//		parseMatrix(new File("./NCBI_ScoringMatrices/" + type));
+		
+		InputStream is  = this.getClass().getResourceAsStream("/"+type);
+		parseMatrix(is);
+		
 	}
 
 	public int[] cmpAlignmentScores(String s1, String s2) {
@@ -57,12 +61,12 @@ public class ScoringMatrix {
 		return 26;
 	}
 
-	private int parseMatrix(File f) {
+	private int parseMatrix(InputStream is) {
 
 		try {
 
 			alphabet = new Vector<String>();
-			BufferedReader buf = new BufferedReader(new FileReader(f));
+			BufferedReader buf = new BufferedReader(new InputStreamReader(is));
 			for (int i = 0; i < 2; i++) {
 				String l = buf.readLine();
 				Vector<String> entries = splitLine(l);

@@ -21,8 +21,8 @@ import pipeline.post.Hit_Run;
 import pipeline.post.Hit.HitType;
 import pipeline.post.mode_one.Alignment_Generator_inParallel.Frame_Direction;
 import util.ScoringMatrix;
-import util.frameshiftAligner.Frameshift_Alignment;
-import util.frameshiftAligner.Frameshift_Alignment.AliMode;
+import util.frameshiftAligner.normal.Frameshift_Alignment;
+import util.frameshiftAligner.normal.Frameshift_Alignment.AliMode;
 
 public class Alignment_Completer_Single {
 
@@ -236,8 +236,7 @@ public class Alignment_Completer_Single {
 		if (refGapStart < refGapEnd && queryGapStart < queryGapEnd - 4) {
 			String subQuery = reverse(query.substring(queryGapStart, queryGapEnd));
 			String subRef = reverse(ref.substring(refGapStart, refGapEnd));
-			String[] aliResultRev = aligner.run(subQuery, subRef, AliMode.FREESHIFT);
-			String[] aliResult = { reverse(aliResultRev[0]), reverse(aliResultRev[1]), reverse(aliResultRev[2]) };
+			Object[] aliResult = aligner.run(subQuery, subRef, AliMode.FREESHIFT_LEFT);
 			closingFrameHits = generateFrameHits(aliResult, queryGapStart, queryGapEnd, refGapStart, refGapEnd, h, run.getFrameDirection(),
 					query.length());
 		}
@@ -260,7 +259,7 @@ public class Alignment_Completer_Single {
 				if (refGapStart < refGapEnd && queryGapStart < queryGapEnd - 4) {
 					String subQuery = query.substring(queryGapStart, queryGapEnd);
 					String subRef = ref.substring(refGapStart, refGapEnd);
-					String[] aliResult = aligner.run(subQuery, subRef, AliMode.GLOBAL);
+					Object[] aliResult = aligner.run(subQuery, subRef, AliMode.GLOBAL);
 					closingFrameHits = generateFrameHits(aliResult, queryGapStart, queryGapEnd, refGapStart, refGapEnd, h, run.getFrameDirection(),
 							query.length());
 				}
@@ -289,7 +288,7 @@ public class Alignment_Completer_Single {
 		if (refGapStart < refGapEnd && queryGapStart < queryGapEnd - 4) {
 			String subQuery = query.substring(queryGapStart, queryGapEnd);
 			String subRef = giToSeq.get(run.getGi()).substring(refGapStart, refGapEnd);
-			String[] aliResult = aligner.run(subQuery, subRef, AliMode.FREESHIFT);
+			Object[] aliResult = aligner.run(subQuery, subRef, AliMode.FREESHIFT_RIGHT);
 			closingFrameHits = generateFrameHits(aliResult, queryGapStart, queryGapEnd, refGapStart, refGapEnd, h, run.getFrameDirection(),
 					query.length());
 		}
@@ -331,7 +330,7 @@ public class Alignment_Completer_Single {
 		return revComp;
 	}
 
-	private Vector<Hit> generateFrameHits(String[] aliResult, int queryStart, int queryEnd, int refStart, int refEnd, Hit hit,
+	private Vector<Hit> generateFrameHits(Object[] aliResult, int queryStart, int queryEnd, int refStart, int refEnd, Hit hit,
 			Frame_Direction frame_Direction, int totalQueryLength) {
 
 		Vector<Hit> closingHits = new Vector<Hit>();
@@ -341,7 +340,7 @@ public class Alignment_Completer_Single {
 		subAliResult[1] = new StringBuffer();
 		int qStart = queryStart, qLength = 0, rStart = refStart, rLength = 0;
 
-		String frameIDs = aliResult[2];
+		String frameIDs = (String) aliResult[2];
 		Integer lastFrameID = 1;
 		for (int i = 0; i <= frameIDs.length(); i++) {
 
@@ -353,8 +352,8 @@ public class Alignment_Completer_Single {
 			if (i < frameIDs.length() && (i == 0 || lastFrameID == frameID)) {
 
 				// extending frame hit
-				char q = aliResult[0].charAt(i);
-				char r = aliResult[1].charAt(i);
+				char q = ((String) aliResult[0]).charAt(i);
+				char r = ((String) aliResult[1]).charAt(i);
 				subAliResult[0] = subAliResult[0].append(q);
 				subAliResult[1] = subAliResult[1].append(r);
 				qLength = q != '-' ? qLength + 3 : qLength;

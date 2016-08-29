@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.math.BigInteger;
 
 import startUp.Main.ParseMode;
 
@@ -14,7 +13,6 @@ public class Diamond_Runner {
 	private File bin, samFile, daaFile;
 	private double lambda, k;
 	private int gapOpen, gapExtend;
-	private BigInteger dbSize;
 	private String matrixType;
 
 	public Diamond_Runner(File bin) {
@@ -23,10 +21,16 @@ public class Diamond_Runner {
 
 	public File execute(File db, File fna, File out, int cores, ParseMode parseMode) {
 
+		System.out.println("STEP_2>Blasting shredded reads with DIAMOND...");
+		long time = System.currentTimeMillis();
+
 		if (blastx(db, fna, out, cores) != 0)
 			System.exit(1);
 
 		daaFile = new File(out.getAbsoluteFile() + File.separator + fna.getName().split("\\.")[0] + ".daa");
+
+		long runtime = (System.currentTimeMillis() - time) / 1000;
+		System.out.println("OUTPUT>Blasting of the shredded reads with DIAMOND finished. [" + runtime + "s]\n");
 
 		if (parseMode == ParseMode.DAA)
 			return daaFile;
@@ -42,7 +46,7 @@ public class Diamond_Runner {
 		out.mkdir();
 		if (db.exists() && fna.exists() && out.exists()) {
 			String cmd = bin.getAbsolutePath() + " blastx -d " + db.getAbsolutePath() + " -q " + fna.getAbsolutePath() + " -a "
-					+ out.getAbsolutePath() + File.separator + fna.getName().split("\\.")[0] + " -p " + cores + " -k 100";
+					+ out.getAbsolutePath() + File.separator + fna.getName().split("\\.")[0] + " -p " + cores + " -k 100 --seg yes";
 			return executingCommand(cmd);
 		} else if (!db.exists())
 			System.out.println("Error running Diamond: " + db.getAbsolutePath() + " does not exist!");
@@ -72,7 +76,7 @@ public class Diamond_Runner {
 	private int executingCommand(String command) {
 		try {
 
-			System.out.println("Executing " + command);
+			System.out.println("OUTPUT>Executing " + command);
 			Runtime rt = Runtime.getRuntime();
 			Process proc = rt.exec(command);
 
@@ -117,8 +121,6 @@ public class Diamond_Runner {
 						k = Double.parseDouble(columns[4].split("=")[1]);
 						gapOpen = Integer.parseInt(columns[5].split("=")[1].split("/")[0]);
 						gapExtend = Integer.parseInt(columns[5].split("=")[1].split("/")[1].split("\\)")[0]);
-					} else if (line.startsWith("DB letters")) {
-						dbSize = new BigInteger(line.split(" ")[3]);
 					}
 					System.out.println(type + ">" + line);
 				}

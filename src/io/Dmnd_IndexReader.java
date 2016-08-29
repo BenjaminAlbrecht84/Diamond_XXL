@@ -7,7 +7,6 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.HashMap;
-import java.util.TreeMap;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -15,7 +14,6 @@ public class Dmnd_IndexReader {
 
 	private File dmndFile;
 
-	// private TreeMap<Integer, Long> giIndex;
 	private ConcurrentHashMap<Integer, Long> giIndex;
 	private Vector<long[]> seqLocations;
 
@@ -24,10 +22,18 @@ public class Dmnd_IndexReader {
 	}
 
 	public void createIndex() {
+		
+		System.out.println("STEP_5>Indexing reference database...");
+		long time = System.currentTimeMillis();
 
 		parseSeqLocations();
 		giIndex = new ConcurrentHashMap<Integer, Long>();
 		giIndex.putAll(mapGIs());
+		
+		long runtime = (System.currentTimeMillis() - time)  / 1000;
+		int proc = (int) Math.ceil(((double) (giIndex.keySet().size()) / (double) seqLocations.size()) * 100.);
+		System.out.println("OUTPUT>" + proc + "% (" + giIndex.keySet().size() + "/" + seqLocations.size() + ") of the GI's mapped. [" + runtime + "s]\n");
+		
 		seqLocations = null;
 
 	}
@@ -105,8 +111,6 @@ public class Dmnd_IndexReader {
 	}
 
 	private ConcurrentHashMap<Integer, Long> mapGIs() {
-
-		System.out.println("Indexing reference database...");
 
 		ConcurrentHashMap<Integer, Long> giToPointer = new ConcurrentHashMap<Integer, Long>();
 		try {
@@ -201,11 +205,12 @@ public class Dmnd_IndexReader {
 			e.printStackTrace();
 		}
 
-		int proc = (int) Math.ceil(((double) (giToPointer.keySet().size()) / (double) seqLocations.size()) * 100.);
-		System.out.println("OUTPUT>Finally, " + proc + "% (" + giToPointer.keySet().size() + "/" + seqLocations.size() + ") of the GI's mapped...");
-
 		return giToPointer;
 
+	}
+
+	public ConcurrentHashMap<Integer, Long> getGiIndex() {
+		return giIndex;
 	}
 
 }

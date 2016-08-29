@@ -19,7 +19,7 @@ public class Shotgun_inParallel {
 	private AtomicInteger shred_counter = new AtomicInteger(0);
 	private int last_p = 0, totalReads;
 
-	public File run(File fastq, File out, int length, int step, int cores) {
+	public File run(File fastq, File out, int length, int step, int cores) {		
 		
 		String name = fastq.getName().split("\\.")[0];
 		File outFile = new File(out.getAbsolutePath() + File.separator + name + "_" + length + "_" + step + ".fna");
@@ -31,7 +31,8 @@ public class Shotgun_inParallel {
 
 		totalReads = long_reads.size();
 		
-		System.out.println("Shredding " + totalReads + " read...");
+		System.out.println("STEP_1>Shredding " + totalReads + " reads...");
+		long time = System.currentTimeMillis();
 
 		Fasta_Writer writer = new Fasta_Writer();
 		int chunkSize = (int) Math.ceil((double) long_reads.size() / (double) cores);
@@ -57,8 +58,9 @@ public class Shotgun_inParallel {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-
-		System.out.println("OUTPUT>100% (" + shred_counter + "/" + totalReads + ") of the reads shredded.");
+		
+		long runtime = (System.currentTimeMillis() - time)  / 1000;
+		System.out.println("OUTPUT>100% (" + shred_counter + "/" + totalReads + ") of the reads shredded. [" + runtime + "s]\n");
 
 		executor.shutdown();
 
@@ -117,7 +119,7 @@ public class Shotgun_inParallel {
 
 	private synchronized void reportProgress(int p) {
 		if (p != 100 && p != last_p && p % 10 == 0) {
-			System.out.println("OUTPUT>" + p + "% (" + shred_counter + "/" + totalReads + ") of the reads shredded.");
+			System.out.println("OUTPUT>" + p + "% (" + shred_counter + "/" + totalReads + ") of the reads shredded...");
 			last_p = p;
 		}
 	}
