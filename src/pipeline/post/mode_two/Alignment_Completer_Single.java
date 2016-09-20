@@ -20,6 +20,7 @@ import pipeline.post.HitToSamConverter;
 import pipeline.post.Hit_Run;
 import pipeline.post.Hit.HitType;
 import pipeline.post.mode_one.Alignment_Generator_inParallel.Frame_Direction;
+import util.SparseString;
 import util.ScoringMatrix;
 import util.frameshiftAligner.normal.Frameshift_Alignment;
 import util.frameshiftAligner.normal.Frameshift_Alignment.AliMode;
@@ -104,13 +105,13 @@ public class Alignment_Completer_Single {
 					}
 
 					// loading GI Sequences
-					Vector<Integer> gIs = new Vector<Integer>();
+					Vector<SparseString> gIs = new Vector<SparseString>();
 					for (Hit_Run run : subset) {
-						int gi = run.getGi();
+						SparseString gi = run.getGi();
 						if (!gIs.contains(gi))
 							gIs.add(gi);
 					}
-					HashMap<Integer, String> giToSeq = getAASequences(dmndReader.getGILocations(gIs));
+					HashMap<SparseString, String> giToSeq = getAASequences(dmndReader.getGILocations(gIs));
 
 					// loading ReadID Sequences
 					Vector<String> readIDs = new Vector<String>();
@@ -163,17 +164,16 @@ public class Alignment_Completer_Single {
 
 	}
 
-	private HashMap<Integer, String> getAASequences(HashMap<Integer, Long> giToPointer) {
+	private HashMap<SparseString, String> getAASequences(HashMap<SparseString, Long> giToPointer) {
 
-		HashMap<Integer, String> giToSeq = new HashMap<Integer, String>();
-		Vector<Integer> sortedGIs = new Vector<Integer>();
+		HashMap<SparseString, String> giToSeq = new HashMap<SparseString, String>();
+		Vector<SparseString> sortedGIs = new Vector<SparseString>();
 		sortedGIs.addAll(giToPointer.keySet());
-		Collections.sort(sortedGIs);
 
 		try {
 			RandomAccessFile raf = new RandomAccessFile(refFile, "r");
 			try {
-				for (int gi : sortedGIs) {
+				for (SparseString gi : sortedGIs) {
 					raf.seek(giToPointer.get(gi));
 					ByteBuffer buffer = ByteBuffer.allocate(1024);
 					buffer.order(ByteOrder.LITTLE_ENDIAN);
@@ -202,7 +202,7 @@ public class Alignment_Completer_Single {
 		return giToSeq;
 	}
 
-	private void closeAliGaps(Hit_Run run, HashMap<Integer, String> giToSeq, HashMap<String, String> readIDToSeq, RandomAccessFile rafSAM,
+	private void closeAliGaps(Hit_Run run, HashMap<SparseString, String> giToSeq, HashMap<String, String> readIDToSeq, RandomAccessFile rafSAM,
 			RandomAccessFile rafDAA) {
 
 		// System.out.println("new Run: " + run.getReadID() + " " +
@@ -407,7 +407,8 @@ public class Alignment_Completer_Single {
 		int refLength = hit.getRef_length();
 		int queryLength = (queryEnd - queryStart + 1) / 3;
 		queryStart = frame_Direction == Frame_Direction.Positiv ? queryStart : totalQueryLength - queryStart;
-		Hit h = new Hit(-1, refStart, refEnd, bitScore, rawScore, hit.getFile_pointer(), hit.getAccessPoint(), queryStart, refLength, queryLength);
+		Hit h = new Hit(-1, refStart, refEnd, bitScore, rawScore, hit.getFile_pointer(), hit.getAccessPoint(), queryStart, refLength, queryLength,
+				hit.getSubjectID());
 		h.setHitType(HitType.Synthetic);
 
 		// adding metaInfo

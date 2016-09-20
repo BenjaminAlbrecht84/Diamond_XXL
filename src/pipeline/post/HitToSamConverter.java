@@ -167,7 +167,7 @@ public class HitToSamConverter {
 						}
 
 						// determining ali strings
-						String[] aliStrings = new CompressAlignment().run(h.getAlignment());
+						String[] aliStrings = hit.getAlignmentStrings(rafDAA, daaReader);
 
 						// computing eValue
 						BigInteger m = dbSize;

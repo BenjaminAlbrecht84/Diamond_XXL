@@ -21,8 +21,8 @@ import pipeline.post.HitRun_Rater;
 import pipeline.post.Hit_Run;
 import pipeline.post.ReadHits;
 import pipeline.post.Hit.HitType;
-import pipeline.post.mode_one.Alignment_Generator_inParallel.Frame_Direction;
 import util.HitLine;
+import util.SparseString;
 import util.ScoringMatrix;
 import util.his_algorithm.algorithm.Algorithm_JacobsenVo;
 
@@ -36,7 +36,7 @@ public class Alignment_Generator_inParallel {
 	private CountDownLatch latch;
 	private AtomicInteger processedReads = new AtomicInteger(0);
 	private int numOfReads, last_p = 0;
-	private ConcurrentLinkedQueue<Hit> mergedHits;
+	private SAM_Writer samWriter;
 
 	private ConcurrentHashMap<String, ReadHits> readMap;
 	private HitRun_Rater scorer;
@@ -46,9 +46,10 @@ public class Alignment_Generator_inParallel {
 	private double maxEValue;
 	private int minSumScore;
 	private int step, length;
+	private boolean useFilters;
 
 	public Alignment_Generator_inParallel(ConcurrentHashMap<String, ReadHits> readMap, HitRun_Rater scorer, File sam_file, DAA_Reader daaReader,
-			ScoringMatrix matrix, double maxEValue, int minSumScore, int step, int length) {
+			ScoringMatrix matrix, double maxEValue, int minSumScore, boolean useFilters, int step, int length) {
 		this.readMap = readMap;
 		this.scorer = scorer;
 		this.sam_file = sam_file;
@@ -56,6 +57,7 @@ public class Alignment_Generator_inParallel {
 		this.matrix = matrix;
 		this.maxEValue = maxEValue;
 		this.minSumScore = minSumScore;
+		this.useFilters = useFilters;
 		this.step = step;
 		this.length = length;
 	}
@@ -64,7 +66,7 @@ public class Alignment_Generator_inParallel {
 
 		Runtime.getRuntime().availableProcessors();
 
-		mergedHits = new ConcurrentLinkedQueue<Hit>();
+		samWriter = new SAM_Writer(sam_file, daaReader);
 		hitRuns = new Vector<Hit_Run>();
 		numOfReads = readMap.keySet().size();
 		int chunk = (int) Math.ceil((double) numOfReads / (double) cores);
@@ -103,10 +105,7 @@ public class Alignment_Generator_inParallel {
 		}
 		executor.shutdown();
 
-		// writing new hits to file
-		new SAM_Writer(sam_file, daaReader).run(mergedHits);
-		
-		long runtime = (System.currentTimeMillis() - time)  / 1000;
+		long runtime = (System.currentTimeMillis() - time) / 1000;
 		System.out.println("OUTPUT>" + 100 + "% (" + processedReads + "/" + numOfReads + ") of the read-hits processed. [" + runtime + "s]\n");
 
 		return hitRuns;
@@ -128,6 +127,8 @@ public class Alignment_Generator_inParallel {
 		public void run() {
 
 			Vector<Hit_Run> localHitRuns = new Vector<Hit_Run>();
+			ConcurrentLinkedQueue<Hit> mergedHits = new ConcurrentLinkedQueue<Hit>();
+
 			try {
 
 				RandomAccessFile rafSAM = new RandomAccessFile(sam_file, "r");
@@ -137,9 +138,9 @@ public class Alignment_Generator_inParallel {
 
 					for (String read_name : readNames) {
 
-						ConcurrentHashMap<Integer, ConcurrentHashMap<Integer, Vector<Hit>>> hitMap = readMap.get(read_name).getHitMap();
-						Vector<Integer> consideredGIs = new Vector<Integer>();
-						for (int gi : hitMap.keySet()) {
+						ConcurrentHashMap<SparseString, ConcurrentHashMap<Integer, Vector<Hit>>> hitMap = readMap.get(read_name).getHitMap();
+						Vector<SparseString> consideredGIs = new Vector<SparseString>();
+						for (SparseString gi : hitMap.keySet()) {
 
 							consideredGIs.add(gi);
 
@@ -174,22 +175,27 @@ public class Alignment_Generator_inParallel {
 
 									// computing heaviest increasing subsequence on ALL hits
 									Hit[] seq = generateHitSequence(allHits);
-									Vector<Hit> his = new Algorithm_JacobsenVo().run(seq, scorer, dir, rafSAM, rafDAA, read_name, gi);
+									Vector<Hit> his = new Algorithm_JacobsenVo().run(seq, scorer, dir, rafSAM, rafDAA, read_name);
 									for (Hit h : his)
 										h.setId(hitToID.get(h));
 
-									// fitting 2D line with fixed slope of 45 degrees
-									HitLine hitLine = new HitLine(step, his);
+									// filtering his after distance to diagonal line
+									if (useFilters) {
 
-									// again computing heaviest increasing subsequence on FILTERED hits
-									Vector<Hit> filteredHits = filterHits(hitLine, allHits);
-									seq = generateHitSequence(filteredHits);
-									his = new Algorithm_JacobsenVo().run(seq, scorer, dir, rafSAM, rafDAA, read_name, gi);
-									for (Hit h : his)
-										h.setId(hitToID.get(h));
+										// fitting 2D line with fixed slope of 45 degrees
+										HitLine hitLine = new HitLine(step, his);
+
+										// again computing heaviest increasing subsequence on FILTERED hits
+										Vector<Hit> filteredHits = filterHits(hitLine, allHits);
+										seq = generateHitSequence(filteredHits);
+										his = new Algorithm_JacobsenVo().run(seq, scorer, dir, rafSAM, rafDAA, read_name);
+										for (Hit h : his)
+											h.setId(hitToID.get(h));
+
+									}
 
 									// storing best result
-									Object[] res = scorer.run(his, dir, rafSAM, rafDAA, read_name, gi);
+									Object[] res = scorer.run(his, dir, rafSAM, rafDAA, read_name);
 									if (!his.isEmpty() && (bestHIS == null || (int) res[2] > bestScore)) {
 										bestHIS = his;
 										bestScore = (int) res[2];
@@ -221,8 +227,8 @@ public class Alignment_Generator_inParallel {
 									bestHISClone.add(hCloned);
 								}
 
-								if (bestEValue < maxEValue && bestSumScore > minSumScore) {
-									Hit_Run hitRun = new Hit_Run(bestHISClone, new String(read_name), new Integer(gi), new Integer(bestSumScore),
+								if (!useFilters || (bestEValue < maxEValue && bestSumScore > minSumScore)) {
+									Hit_Run hitRun = new Hit_Run(bestHISClone, new String(read_name), new SparseString(gi), new Integer(bestSumScore),
 											new Integer(bestLength), new Integer(bestRawScore), frameDir, new Integer(bestRefLength),
 											new Double(bestEValue));
 									localHitRuns.add(hitRun);
@@ -237,7 +243,7 @@ public class Alignment_Generator_inParallel {
 						}
 
 						// freeing Memory
-						for (int gi : consideredGIs)
+						for (SparseString gi : consideredGIs)
 							readMap.get(read_name).freeGiHits(gi);
 						readMap.remove(read_name);
 
@@ -256,8 +262,12 @@ public class Alignment_Generator_inParallel {
 				e.printStackTrace();
 			}
 
+			// reporting best runs
 			for (Hit_Run run : localHitRuns)
 				reportLocalHitRuns(run);
+
+			// writing new hits to file
+			samWriter.run(mergedHits);
 
 			latch.countDown();
 
@@ -266,7 +276,7 @@ public class Alignment_Generator_inParallel {
 		private Vector<Hit> filterHits(HitLine hitLine, Vector<Hit> hits) {
 
 			// filtering method follows the alignment refinement step of GraphMap
-			// see paper "Fast and sensitive mapping of nanopore sequencing reads with GraphMap"
+			// -> see GraphMap-Paper: "Fast and sensitive mapping of nanopore sequencing reads with GraphMap"
 
 			double maxDist = 0.45 * (double) hits.firstElement().getRef_length() * Math.sqrt(2.) / 2.;
 
@@ -319,7 +329,7 @@ public class Alignment_Generator_inParallel {
 
 	private synchronized void reportProgress(int p) {
 		if (p != 100 && p != last_p && p % 10 == 0) {
-			System.out.println("OUTPUT>" + p + "% (" + processedReads + "/" + numOfReads + ") of the read-hits processed...");
+			System.out.println("OUTPUT>" + p + "% (" + processedReads + "/" + numOfReads + ") of the read-hits processed.");
 			last_p = p;
 		}
 	}
@@ -347,16 +357,9 @@ public class Alignment_Generator_inParallel {
 					int qStart_R = dir == Frame_Direction.Positiv ? hR.getQuery_start() + offset_R - 1 : length - hR.getQuery_start() - offset_R;
 					int qEnd_R = qStart_R + hR.getQuery_length() * 3;
 
-					// System.out.println("[" + qStart_L + "," + qEnd_L + "] | [" + qStart_R + "," + qEnd_R + "]");
-					// System.out.println("[" + hL.getRef_start() + "," + hL.getRef_end() + "] | [" + hR.getRef_start() + "," + hR.getRef_end() +
-					// "]");
-
 					int offset_M = Math.abs(hM.getId() * step);
 					int qStart_M = dir == Frame_Direction.Positiv ? hM.getQuery_start() + offset_M - 1 : length - hM.getQuery_start() - offset_M;
 					int qEnd_M = qStart_M + hM.getQuery_length() * 3;
-
-					// System.out.println("[" + qStart_M + "," + qEnd_M + "]");
-					// System.out.println("[" + hM.getRef_start() + "," + hM.getRef_end() + "]");
 
 					if (qEnd_M == qEnd_R) {
 						resHits.remove(hL);

@@ -10,13 +10,21 @@ import startUp.Main.ParseMode;
 
 public class Diamond_Runner {
 
-	private File bin, samFile, daaFile;
+	// input options
+	private File bin;
+	private String optionString;
+
+	// output files
+	private File samFile, daaFile;
+
+	// parsed options
 	private double lambda, k;
 	private int gapOpen, gapExtend;
 	private String matrixType;
 
-	public Diamond_Runner(File bin) {
+	public Diamond_Runner(File bin, String optionString) {
 		this.bin = bin;
+		this.optionString = optionString;
 	}
 
 	public File execute(File db, File fna, File out, int cores, ParseMode parseMode) {
@@ -42,11 +50,18 @@ public class Diamond_Runner {
 
 	}
 
-	public int blastx(File db, File fna, File out, int cores) {
+	private int blastx(File db, File fna, File out, int cores) {
 		out.mkdir();
 		if (db.exists() && fna.exists() && out.exists()) {
+
+			// default setting
 			String cmd = bin.getAbsolutePath() + " blastx -d " + db.getAbsolutePath() + " -q " + fna.getAbsolutePath() + " -a "
-					+ out.getAbsolutePath() + File.separator + fna.getName().split("\\.")[0] + " -p " + cores + " -k 100 --seg yes";
+					+ out.getAbsolutePath() + File.separator + fna.getName().split("\\.")[0] + " " + optionString;
+
+			// sensitive setting
+			// String cmd = bin.getAbsolutePath() + " blastx -d " + db.getAbsolutePath() + " -q " + fna.getAbsolutePath() + " -a "
+			// + out.getAbsolutePath() + File.separator + fna.getName().split("\\.")[0] + " -p " + cores + " -k 100 --seg no --more-sensitive";
+
 			return executingCommand(cmd);
 		} else if (!db.exists())
 			System.out.println("Error running Diamond: " + db.getAbsolutePath() + " does not exist!");
@@ -58,7 +73,7 @@ public class Diamond_Runner {
 		return 1;
 	}
 
-	public int view_samFile(File daaFile, File out) {
+	private int view_samFile(File daaFile, File out) {
 		out.mkdir();
 		if (daaFile.exists() && out.exists()) {
 			samFile = new File(out.getAbsolutePath() + File.separator + daaFile.getName().split("\\.")[0] + ".sam");

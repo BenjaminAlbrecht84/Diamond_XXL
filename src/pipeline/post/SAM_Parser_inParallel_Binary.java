@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import util.SparseString;
 import util.ScoringMatrix;
 
 public class SAM_Parser_inParallel_Binary {
@@ -155,7 +156,8 @@ public class SAM_Parser_inParallel_Binary {
 				char lastChar = '\n';
 
 				StringBuffer buf = new StringBuffer();
-				int gi = -1, read_num = -1, frame = -1, ref_start = -1, bitScore = -1, rawScore = -1, query_start = -1, ref_length = -1;
+				SparseString gi = new SparseString("-1");
+				int read_num = -1, frame = -1, ref_start = -1, bitScore = -1, rawScore = -1, query_start = -1, ref_length = -1;
 				String cigar = "", read_id = "", seq = "", mdz = "";
 
 				StringBuffer allEntries = new StringBuffer("");
@@ -204,7 +206,7 @@ public class SAM_Parser_inParallel_Binary {
 
 								// generating hit
 								Hit h = new Hit(read_num, ref_start, ref_end, bitScore, rawScore, pointer, null, query_start, ref_length,
-										query_length);
+										query_length, -1);
 
 								// storing compressed alignment strings (needs
 								// too much memory!!!)
@@ -240,7 +242,7 @@ public class SAM_Parser_inParallel_Binary {
 									read_num = Integer.parseInt(id_split[id_split.length - 1]);
 									break;
 								case (2):
-									gi = Integer.parseInt(mySplit(entry, '|')[1]);
+									gi = new SparseString(entry);
 									break;
 								case (3):
 									ref_start = Integer.parseInt(entry);
@@ -315,7 +317,7 @@ public class SAM_Parser_inParallel_Binary {
 		}
 	}
 
-	private synchronized void addHit(String read_id, Hit h, int gi, int frame) {
+	private synchronized void addHit(String read_id, Hit h, SparseString gi, int frame) {
 		if (!readMap.containsKey(read_id))
 			readMap.put(read_id, new ReadHits());
 		readMap.get(read_id).add(h, gi, frame);
@@ -326,7 +328,7 @@ public class SAM_Parser_inParallel_Binary {
 			if (!readMap.containsKey(read_id))
 				readMap.put(read_id, new ReadHits());
 			ReadHits hits = localReadMap.get(read_id);
-			for (int gi : hits.getHitMap().keySet()) {
+			for (SparseString gi : hits.getHitMap().keySet()) {
 				for (int frame : hits.getHitMap().get(gi).keySet()) {
 					for (Hit h : hits.getHitMap().get(gi).get(frame))
 						readMap.get(read_id).add(h, gi, frame);

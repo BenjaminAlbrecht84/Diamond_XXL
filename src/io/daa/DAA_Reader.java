@@ -12,11 +12,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import pipeline.post.Hit;
 import pipeline.post.ReadHits;
+import util.SparseString;
 
 public class DAA_Reader {
 
@@ -38,7 +38,7 @@ public class DAA_Reader {
 
 	public ConcurrentHashMap<String, ReadHits> parseAllHits(int cores) {
 
-		System.out.println("STEP_3>Parsing DAIMOND output...");
+		System.out.println("STEP_3>Parsing DIAMOND output...");
 		long time = System.currentTimeMillis();
 
 		readMap = new ConcurrentHashMap<String, ReadHits>();
@@ -71,8 +71,8 @@ public class DAA_Reader {
 			e.printStackTrace();
 		}
 		executor.shutdown();
-		
-		long runtime = (System.currentTimeMillis() - time)  / 1000;
+
+		long runtime = (System.currentTimeMillis() - time) / 1000;
 		System.out.println("OUTPUT>" + 100 + "% (" + numOfRecords + "/" + numOfRecords + ") of all records parsed.[" + runtime + "s]\n");
 
 		return readMap;
@@ -92,7 +92,7 @@ public class DAA_Reader {
 			if (!readMap.containsKey(read_id))
 				readMap.put(read_id, new ReadHits());
 			ReadHits hits = localReadMap.get(read_id);
-			for (int gi : hits.getHitMap().keySet()) {
+			for (SparseString gi : hits.getHitMap().keySet()) {
 				for (int frame : hits.getHitMap().get(gi).keySet()) {
 					for (Hit h : hits.getHitMap().get(gi).get(frame))
 						readMap.get(read_id).add(h, gi, frame);
@@ -156,18 +156,19 @@ public class DAA_Reader {
 								int query_length = hit.getQueryLength() / 3;
 
 								int frame = hit.getFrame();
-								int gi = Integer.parseInt(mySplit(hit.getReferenceName(), '|')[1]);
+								SparseString gi = new SparseString(hit.getReferenceName().split(" ")[0]);
+								int subjectID = hit.getSubjectID();
 
 								// parsing query name
 								String queryName = hit.getQueryName();
 								String[] id_split = mySplit(queryName, ':');
 								String read_id = id_split[0];
-								int read_num = Integer.parseInt(id_split[id_split.length - 1]);
+								int read_num = id_split.length == 1 ? 0 : Integer.parseInt(id_split[id_split.length - 1]);
 								read_num = frame < 0 ? -read_num : read_num;
 
 								// initializing hit
 								Hit h = new Hit(read_num, ref_start, ref_end, bitScore, rawScore, pointer, accessPoint, query_start, ref_length,
-										query_length);
+										query_length, subjectID);
 
 								// storing hit
 								if (!localReadMap.containsKey(read_id))

@@ -16,10 +16,12 @@ public class Hit {
 	}
 
 	private HitType hitType = HitType.Real;
+	private int frame = Integer.MIN_VALUE;
 
 	private int id, ref_start, ref_end, bitScore, rawScore, query_start, query_length, ref_length;
 	private Long file_pointer;
 	private Integer accessPoint;
+	private int subjectID = -1;
 
 	private int[] alignmentScores;
 	private BitSet query_insertions;
@@ -29,7 +31,7 @@ public class Hit {
 	private Object[] metaInfo = null;
 
 	public Hit(int id, int ref_start, int ref_end, int bitScore, int rawScore, long file_pointer, Integer accessPoint, int query_start,
-			int ref_length, int query_length, int[] alignmentScores, BitSet query_insertions, BitSet query_deletions) {
+			int ref_length, int query_length, int[] alignmentScores, BitSet query_insertions, BitSet query_deletions, int subjectID) {
 
 		this.id = new Integer(id);
 		this.ref_start = new Integer(ref_start);
@@ -41,6 +43,7 @@ public class Hit {
 		this.query_start = new Integer(query_start);
 		this.ref_length = new Integer(ref_length);
 		this.query_length = new Integer(query_length);
+		this.subjectID = subjectID;
 
 		this.alignmentScores = new int[alignmentScores.length];
 		for (int i = 0; i < alignmentScores.length; i++)
@@ -51,7 +54,7 @@ public class Hit {
 	}
 
 	public Hit(int id, int ref_start, int ref_end, int bitScore, int rawScore, long file_pointer, Integer accessPoint, int query_start,
-			int ref_length, int query_length) {
+			int ref_length, int query_length, int subjectID) {
 		this.id = new Integer(id);
 		this.ref_start = new Integer(ref_start);
 		this.ref_end = new Integer(ref_end);
@@ -62,6 +65,7 @@ public class Hit {
 		this.query_start = new Integer(query_start);
 		this.ref_length = new Integer(ref_length);
 		this.query_length = new Integer(query_length);
+		this.subjectID = subjectID;
 	}
 
 	public Hit(Hit h) {
@@ -75,6 +79,7 @@ public class Hit {
 		this.query_start = new Integer(h.getQuery_start());
 		this.ref_length = new Integer(h.getRef_length());
 		this.query_length = new Integer(h.getQuery_length());
+		this.subjectID = new Integer(h.getSubjectID());
 	}
 
 	public int numOfQueryInsertions(int l, int r) {
@@ -108,8 +113,8 @@ public class Hit {
 	public int[] getAlignmentScores(ScoringMatrix matrix, RandomAccessFile raf) {
 		if (alignmentScores != null)
 			return alignmentScores;
-		String[] aliStrings1 = getAlignmentStrings(raf);
-		Object[] scoring_result = new ReconstructAlignment(matrix).run(aliStrings1[1], aliStrings1[0], aliStrings1[2]);
+		String[] aliStrings = getAlignmentStrings(raf);
+		Object[] scoring_result = new ReconstructAlignment(matrix).run(aliStrings[1], aliStrings[0], aliStrings[2]);
 		alignmentScores = (int[]) scoring_result[0];
 		query_insertions = (BitSet) scoring_result[1];
 		query_deletions = (BitSet) scoring_result[2];
@@ -119,8 +124,8 @@ public class Hit {
 	public int[] getAlignmentScores(ScoringMatrix matrix, RandomAccessFile raf, DAA_Reader daaReader) {
 		if (alignmentScores != null)
 			return alignmentScores;
-		String[] alignment = daaReader.parseHit(raf, file_pointer, accessPoint).getAlignment();
-		Object[] scoring_result = new ReconstructAlignment(matrix).run(alignment);
+		String[] aliStrings = getAlignmentStrings(raf, daaReader);
+		Object[] scoring_result = new ReconstructAlignment(matrix).run(aliStrings[1], aliStrings[0], aliStrings[2]);
 		alignmentScores = (int[]) scoring_result[0];
 		query_insertions = (BitSet) scoring_result[1];
 		query_deletions = (BitSet) scoring_result[2];
@@ -256,6 +261,18 @@ public class Hit {
 
 	public void setAccessPoint(Integer accessPoint) {
 		this.accessPoint = accessPoint;
+	}
+
+	public int getFrame() {
+		return frame;
+	}
+
+	public void setFrame(int frame) {
+		this.frame = frame;
+	}
+
+	public int getSubjectID() {
+		return subjectID;
 	}
 
 }

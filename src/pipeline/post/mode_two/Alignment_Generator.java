@@ -27,6 +27,7 @@ import pipeline.post.ReadHits;
 import pipeline.post.Hit.HitType;
 import pipeline.post.mode_one.Alignment_Generator_inParallel;
 import pipeline.post.mode_one.Alignment_Generator_inParallel.Frame_Direction;
+import util.SparseString;
 import util.ScoringMatrix;
 import util.his_algorithm.algorithm.Algorithm_JacobsenVo;
 
@@ -141,9 +142,9 @@ public class Alignment_Generator {
 
 					for (String read_name : readNames) {
 
-						ConcurrentHashMap<Integer, ConcurrentHashMap<Integer, Vector<Hit>>> hitMap = readMap.get(read_name).getHitMap();
-						Vector<Integer> consideredGIs = new Vector<Integer>();
-						for (int gi : hitMap.keySet()) {
+						ConcurrentHashMap<SparseString, ConcurrentHashMap<Integer, Vector<Hit>>> hitMap = readMap.get(read_name).getHitMap();
+						Vector<SparseString> consideredGIs = new Vector<SparseString>();
+						for (SparseString gi : hitMap.keySet()) {
 
 							consideredGIs.add(gi);
 
@@ -180,12 +181,12 @@ public class Alignment_Generator {
 
 									// calculating heaviest increasing subsequence
 									Hit[] seq = generateHitSequence(allHits);
-									Vector<Hit> his = new Algorithm_JacobsenVo().run(seq, runRater, dir, rafSAM, rafDAA, read_name, gi);
+									Vector<Hit> his = new Algorithm_JacobsenVo().run(seq, runRater, dir, rafSAM, rafDAA, read_name);
 									for (Hit h : his)
 										h.setId(hitToID.get(h));
 
 									// store best HIS
-									Object[] res = runRater.run(his, dir, rafSAM, rafDAA, read_name, gi);
+									Object[] res = runRater.run(his, dir, rafSAM, rafDAA, read_name);
 									if (bestHIS == null || (int) res[2] > bestScore) {
 										bestHIS = his;
 										bestScore = (int) res[2];
@@ -214,7 +215,7 @@ public class Alignment_Generator {
 
 							// adding hit to buffer
 							if (bestEValue > maxEValue && bestSumScore > minSumScore) {
-								Hit_Run hitRun = new Hit_Run(bestHISClone, new String(read_name), new Integer(gi), new Integer(bestSumScore),
+								Hit_Run hitRun = new Hit_Run(bestHISClone, new String(read_name), new SparseString(gi), new Integer(bestSumScore),
 										new Integer(bestLength), new Integer(bestRawScore), frameDir, new Integer(bestRefLength),
 										new Double(bestEValue));
 								addHit(hitRun);
@@ -227,7 +228,7 @@ public class Alignment_Generator {
 						}
 
 						// freeing Memory
-						for (int gi : consideredGIs)
+						for (SparseString gi : consideredGIs)
 							readMap.get(read_name).freeGiHits(gi);
 						readMap.remove(read_name);
 

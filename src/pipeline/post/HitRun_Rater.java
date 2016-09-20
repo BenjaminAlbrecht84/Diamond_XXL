@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.Vector;
 
 import io.daa.DAA_Reader;
-import pipeline.post.Hit.HitType;
 import pipeline.post.mode_one.Alignment_Generator_inParallel.Frame_Direction;
 import util.ScoringMatrix;
 
@@ -30,7 +29,7 @@ public class HitRun_Rater {
 		this.readToLength = readToLength;
 	}
 
-	public Object[] run(Vector<Hit> hits, Frame_Direction dir, RandomAccessFile rafSAM, RandomAccessFile rafDAA, String readID, int gi) {
+	public Object[] run(Vector<Hit> hits, Frame_Direction dir, RandomAccessFile rafSAM, RandomAccessFile rafDAA, String readID) {
 
 		if (hits.isEmpty()) {
 			Object[] result = { 0, 0, 0, 0, 0 };
@@ -57,7 +56,8 @@ public class HitRun_Rater {
 
 		// determining properties of run
 		Hit h1 = hits.get(0);
-		double hit_length = h1.getQuery_length(), sum = h1.getRawScore(), g = 1, r = hits.size();
+		double hit_length = h1.getQuery_length(), sum = h1.getRawScore(), g = 0, r = 1;
+		hits.size();
 		int refCover = refCoverage(h1);
 		for (int i = 1; i < hits.size(); i++) {
 
@@ -72,8 +72,13 @@ public class HitRun_Rater {
 				refCover += refCoverage(h2);
 				hit_length += h2.getQuery_length();
 				sum += h2.getRawScore();
-				g += l2 - r1 + 1;
+				int gapDist = l2 - r1 - 1;
 				h1 = h2;
+				g += gapDist;
+
+				if (gapDist > 0)
+					r++;
+
 			} else if (r1 >= l2 && r1 < r2) { // h1 and h2 overlap
 
 				precomputeAlignmentScore(h1, rafSAM, rafDAA);
@@ -90,7 +95,7 @@ public class HitRun_Rater {
 					int b = diff + h1.numOfQueryInsertions(r1 - diff, r1);
 					b = b < h1.getAlignmentScores(matrix, null).length ? b : h1.getAlignmentScores(matrix, null).length - 1;
 					hit_length += h2.getQuery_length() - b;
-					for (int j = 0; j < b; j++) 
+					for (int j = 0; j < b; j++)
 						sum -= h1.getAlignmentScores(matrix, null)[h1.getAlignmentScores(matrix, null).length - 1 - j];
 					for (int j = 0; j < h2.getAlignmentScores(matrix, null).length; j++)
 						sum += h2.getAlignmentScores(matrix, null)[j];
@@ -103,48 +108,48 @@ public class HitRun_Rater {
 
 				h1 = h2;
 
-			} else { // h2 is contained in h1
-				r--;
 			}
+			// else
+			// r--;
 
 		}
 
 		double refLength = hits.get(0).getRef_length();
 		int coverage = (int) Math.floor(((double) refCover / refLength) * 100.);
 
-		if (coverage < 95) {
+		// if (coverage < 95) {
 
-			// applying Equation 4-17/4-18 given in the Blast-Book of o'Reilly
-			int sumScore = -1;
-			double n = readToLength != null ? readToLength.get(readID) : hits.get(0).getRef_length();
-			if (g != 0)
-				sumScore = (int) Math.round(
-						lambda * sum - Math.log(k * m.doubleValue() * n) - (r - 1) * (Math.log(k) + 2 * Math.log(g)) - Math.log10(factorial(r)));
-			else
-				sumScore = (int) Math.round(lambda * sum - r * Math.log(k * m.doubleValue() * n) + Math.log(factorial(r)));
+		// applying Equation 4-17/4-18 given in the Blast-Book of o'Reilly
+		int sumScore = -1;
+		double n = readToLength != null ? readToLength.get(readID) : hits.get(0).getRef_length();
+		if (g != 0)
+			sumScore = (int) Math
+					.round(lambda * sum - Math.log(k * m.doubleValue() * n) - (r - 1) * (Math.log(k) + 2 * Math.log(g)) - Math.log10(factorial(r)));
+		else
+			sumScore = (int) Math.round(lambda * sum - r * Math.log(k * m.doubleValue() * n) + Math.log(factorial(r)));
 
-			// applying Equation 4.19-4.21 given in the Blast-Book of o'Reilly
-			double P_r = (Math.pow(Math.E, -(double) sumScore) * Math.pow((double) sumScore, r - 1)) / (factorial(r) * factorial(r - 1));
-			double P_r_prime = P_r / Math.pow(beta, r - 1) * (1 - beta);
-			double eValue = (m.doubleValue() / n) * P_r_prime;
+		// applying Equation 4.19-4.21 given in the Blast-Book of o'Reilly
+		double P_r = (pow(Math.E, -(double) sumScore) * pow((double) sumScore, r - 1)) / (factorial(r) * factorial(r - 1));
+		double P_r_prime = P_r / pow(beta, r - 1) * (1 - beta);
+		double eValue = (m.doubleValue() / n) * P_r_prime;
 
-			Object[] result = { sumScore, (int) hit_length, (int) sum, refCover, eValue };
-			return result;
+		Object[] result = { sumScore, (int) hit_length, (int) sum, refCover, eValue };
+		return result;
 
-		} else {
-
-			double rawScore = sum;
-
-			double sPrime = (lambda * rawScore - Math.log(k)) / Math.log(2);
-			int bitScore = (int) Math.round(sPrime);
-
-			double n = readToLength != null ? readToLength.get(readID) : hits.get(0).getRef_length();
-			double eValue = m.doubleValue() * n * Math.pow(2, -sPrime);
-
-			Object[] result = { bitScore, (int) hit_length, (int) rawScore, refCover, eValue };
-			return result;
-
-		}
+		// } else {
+		//
+		// double rawScore = sum;
+		//
+		// double sPrime = (lambda * rawScore - Math.log(k)) / Math.log(2);
+		// int bitScore = (int) Math.round(sPrime);
+		//
+		// double n = readToLength != null ? readToLength.get(readID) : hits.get(0).getRef_length();
+		// double eValue = m.doubleValue() * n * Math.pow(2, -sPrime);
+		//
+		// Object[] result = { bitScore, (int) hit_length, (int) rawScore, refCover, eValue };
+		// return result;
+		//
+		// }
 
 	}
 
@@ -156,14 +161,21 @@ public class HitRun_Rater {
 	}
 
 	private int refCoverage(Hit h) {
-		return h.getRef_end() - h.getRef_start();
+		return h.getRef_end() - h.getRef_start() + 1;
+	}
+
+	private double pow(double n, double m) {
+		double p = Math.pow(n, m);
+		return p;
 	}
 
 	private double factorial(double n) {
 		double fact = 1.;
 		for (int i = 1; i <= n; i++)
 			fact *= (double) i;
-		return (double) fact;
+		if (fact == Double.POSITIVE_INFINITY)
+			return Double.MAX_VALUE;
+		return fact;
 	}
 
 	public double getLambda() {

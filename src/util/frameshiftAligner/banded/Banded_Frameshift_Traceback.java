@@ -18,8 +18,8 @@ public class Banded_Frameshift_Traceback {
 		this.delta = delta;
 	}
 
-	public Object[] run(int[][] D1, int[][] Q1, int[][] P1, int[][] D2, int[][] Q2, int[][] P2, int[][] D3, int[][] Q3, int[][] P3, String s11,
-			String s12, String s13, String s2, int[] startingCell, Vector<int[]> bounderies, AliMode mode) {
+	public Object[] run(int[][] D1, int[][] Q1, int[][] P1, int[][] D2, int[][] Q2, int[][] P2, int[][] D3, int[][] Q3, int[][] P3, String s1,
+			String s11, String s12, String s13, String s2, int[] startingCell, Vector<int[]> bounderies, AliMode mode) {
 
 		HashMap<Integer, int[][][]> frameToMatrix = new HashMap<Integer, int[][][]>();
 		int[][][] frame1Matrices = { D1, Q1, P1 };
@@ -39,82 +39,85 @@ public class Banded_Frameshift_Traceback {
 		StringBuffer frames = new StringBuffer();
 		StringBuffer[] alignment = { ali1, ali2, frames };
 
-		boolean succ = recursiveCall(frameToMatrix, frameToSequence, s2, startingCell, alignment, bounderies, mode);
+		// running traceback
+		int[] cell = startingCell;
+		while (true) {
 
-		if (!succ)
-			return null;
+			cell = backtrace(frameToMatrix, frameToSequence, s2, cell, alignment, bounderies, mode);
 
+			int i = cell[0];
+			int j = cell[1];
+
+			if (bounderies != null && (j == bounderies.get(i)[0] || j == bounderies.get(i)[1]))
+				return null;
+			else if (i == 0 && j == 0)
+				break;
+			else if (j == 0 && mode == AliMode.FREESHIFT)
+				break;
+
+		}
+
+		// reversing sequences
 		if (mode == AliMode.FREESHIFT_LEFT) {
 			alignment[0] = alignment[0].reverse();
 			alignment[1] = alignment[1].reverse();
 			alignment[2] = alignment[2].reverse();
 		}
 
-		int qAligned = startingCell[0] + 1;
+		int qAligned = mode == AliMode.FREESHIFT_LEFT ? startingCell[0] : cell[0];
 		int aliScore = startingCell[3];
-		Object[] res = { alignment[0].toString(), alignment[1].toString(), alignment[2].toString(), aliScore, qAligned };
+		Object[] res = { alignment[0].toString(), alignment[1].toString(), alignment[2].toString(), aliScore, qAligned, s11.length() };
 		return res;
 
 	}
 
-	private boolean recursiveCall(HashMap<Integer, int[][][]> frameToMatrix, HashMap<Integer, String> frameToSequence, String s2, int[] cell,
+	private int[] backtrace(HashMap<Integer, int[][][]> frameToMatrix, HashMap<Integer, String> frameToSequence, String s2, int[] cell,
 			StringBuffer[] alignment, Vector<int[]> bounderies, AliMode mode) {
 
 		int i = cell[0];
 		int j = cell[1];
 		int frame = cell[2];
 
-		if (bounderies != null && (j == bounderies.get(i)[0] || j == bounderies.get(i)[1]))
-			return false;
-		else if (j == 0 && mode == AliMode.FREESHIFT) {
-			return true;
-		} else if (i != 0 || j != 0) {
+		int[] frames = { 1, 2, 3 };
+		switch (frame) {
+		case 2:
+			frames[0] = 2;
+			frames[1] = 1;
+			break;
+		case 3:
+			frames[0] = 3;
+			frames[2] = 1;
+			break;
+		}
 
-			int[] frames = { 1, 2, 3 };
-			switch (frame) {
-			case 2:
-				frames[0] = 2;
-				frames[1] = 1;
+		int[][] D1 = frameToMatrix.get(frames[0])[0];
+		int[][] Q1 = frameToMatrix.get(frames[0])[1];
+		int[][] P1 = frameToMatrix.get(frames[0])[2];
+		String s1 = frameToSequence.get(frames[0]);
+		int[] prevCell = null;
+
+		int penalty = 0;
+		for (int f : frames) {
+
+			// searching previous cell
+			int[][] D2 = frameToMatrix.get(f)[0];
+			int[][] Q2 = frameToMatrix.get(f)[1];
+			int[][] P2 = frameToMatrix.get(f)[2];
+			prevCell = findPreviousCell(D1, Q1, P1, D2, Q2, P2, i, j, alignment, s1, s2, f, frames[0], penalty, frameToSequence);
+			if (prevCell != null)
 				break;
-			case 3:
-				frames[0] = 3;
-				frames[2] = 1;
-				break;
-			}
 
-			int[][] D1 = frameToMatrix.get(frames[0])[0];
-			String s1 = frameToSequence.get(frames[0]);
-			int[] nextCell = null;
-
-			int penalty = 0;
-			for (int f : frames) {
-
-				// searching previous cells
-				int[][] D2 = frameToMatrix.get(f)[0];
-				int[][] Q2 = frameToMatrix.get(f)[1];
-				int[][] P2 = frameToMatrix.get(f)[2];
-				nextCell = backtrace(D1, D2, Q2, P2, i, j, alignment, s1, s2, f, frames[0], penalty);
-				if (nextCell != null)
-					break;
-
-				// setting penalty for changing frames
-				penalty = delta;
-
-			}
-
-			return recursiveCall(frameToMatrix, frameToSequence, s2, nextCell, alignment, bounderies, mode);
+			// setting penalty for changing frames
+			penalty = delta;
 
 		}
 
-		return true;
+		return prevCell;
 
 	}
 
-	private int[] backtrace(int[][] D1, int[][] D2, int[][] Q2, int[][] P2, int i, int j, StringBuffer[] alignment, String s1, String s2, int frame,
-			int curFrame, int penalty) {
-
-		// System.out.println("\n[" + i + "," + j + "," + frame + "]: " +
-		// D1[i][j]);
+	private int[] findPreviousCell(int[][] D1, int[][] Q1, int[][] P1, int[][] D2, int[][] Q2, int[][] P2, int i, int j, StringBuffer[] alignment,
+			String s1, String s2, int frame, int curFrame, int penalty, HashMap<Integer, String> frameToSequence) {
 
 		if (i != 0 || j != 0) {
 
@@ -158,16 +161,25 @@ public class Banded_Frameshift_Traceback {
 					// checking left direction
 					Integer l = null;
 					int score = D1[i][j];
+					Vector<Integer> frames = new Vector<Integer>();
 					for (int k = j - 1; k >= 0; k--) {
+
 						if (D2[i][k] == Integer.MIN_VALUE)
 							break;
 						if (D2[i][k] - w(j - k) - penalty == D1[i][j]) {
+							frames.add(0, frame);
 							l = k;
 							break;
 						}
+
 						score += gapExtend;
-						if (Q2[i][k] - penalty != score)
+						if (Q1[i][k] != score && Q2[i][k] - penalty != score)
 							break;
+						if (Q1[i][k] == score)
+							frames.add(0, curFrame);
+						else
+							frames.add(0, frame);
+
 					}
 					if (l != null) {
 						StringBuffer subSeq = new StringBuffer("");
@@ -175,7 +187,8 @@ public class Banded_Frameshift_Traceback {
 							subSeq.insert(0, s2.charAt(k));
 						alignment[0] = alignment[0].insert(0, gapString(j - l));
 						alignment[1] = alignment[1].insert(0, subSeq);
-						alignment[2] = alignment[2].insert(0, frameString(j - l, curFrame));
+						// alignment[2] = alignment[2].insert(0, frameString(j - l, curFrame));
+						alignment[2] = alignment[2].insert(0, frameString(frames));
 						int[] res = { i, l, frame };
 						return res;
 					}
@@ -185,24 +198,37 @@ public class Banded_Frameshift_Traceback {
 						// checking upper direction
 						Integer t = null;
 						score = D1[i][j];
+						frames = new Vector<Integer>();
 						for (int k = i - 1; k >= 0; k--) {
 							if (D2[k][j] == Integer.MIN_VALUE)
 								break;
 							if (D2[k][j] - w(i - k) - penalty == D1[i][j]) {
+								frames.add(0, frame);
 								t = k;
 								break;
 							}
 							score += gapExtend;
-							if (P2[k][j] - penalty != score)
+							if (P1[k][j] != score && P2[k][j] - penalty != score)
 								break;
+							if (P1[k][j] == score)
+								frames.add(0, curFrame);
+							else
+								frames.add(0, frame);
+
 						}
 						if (t != null) {
 							StringBuffer subSeq = new StringBuffer("");
-							for (int k = i - 1; k >= t; k--)
-								subSeq.insert(0, s1.charAt(k));
+							// for (int k = i - 1; k >= t; k--)
+							// subSeq.insert(0, s1.charAt(k));
+							int pos = frames.size() - 1;
+							for (int k = i - 1; k >= t; k--) {
+								String s = frameToSequence.get(frames.get(pos--));
+								subSeq.insert(0, s.charAt(k));
+							}
 							alignment[0] = alignment[0].insert(0, subSeq);
 							alignment[1] = alignment[1].insert(0, gapString(i - t));
-							alignment[2] = alignment[2].insert(0, frameString(i - t, curFrame));
+							// alignment[2] = alignment[2].insert(0, frameString(i - t, curFrame));
+							alignment[2] = alignment[2].insert(0, frameString(frames));
 							int[] res = { t, j, frame };
 							return res;
 						}
@@ -228,6 +254,13 @@ public class Banded_Frameshift_Traceback {
 		StringBuffer buf = new StringBuffer();
 		for (int i = 0; i < l; i++)
 			buf.append(frame);
+		return buf.toString();
+	}
+
+	private Object frameString(Vector<Integer> frames) {
+		StringBuffer buf = new StringBuffer();
+		for (int f : frames)
+			buf.append(f);
 		return buf.toString();
 	}
 

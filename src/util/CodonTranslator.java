@@ -109,7 +109,7 @@ public class CodonTranslator {
 	private char translateCodon(String codon) {
 		if (codonMap.containsKey(codon))
 			return codonMap.get(codon);
-		return '*';
+		return 'X';
 	}
 
 }

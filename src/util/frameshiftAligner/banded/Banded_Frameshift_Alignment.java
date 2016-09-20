@@ -91,11 +91,12 @@ public class Banded_Frameshift_Alignment {
 		// performing traceback
 		Banded_Frameshift_Traceback traceback = new Banded_Frameshift_Traceback(scoringMatrix, gapOpen, gapExtend, delta);
 		int[] startingCell = mode == AliMode.GLOBAL ? getStartingCell_Global(D1, D2, D3, n1, n2) : getStartingCell_FreeShift(D1, D2, D3, n1, n2);
-		Object[] alignment = traceback.run(D1, Q1, P1, D2, Q2, P2, D3, Q3, P3, s11, s12, s13, s2, startingCell, bounds, mode);
+		Object[] alignment = traceback.run(D1, Q1, P1, D2, Q2, P2, D3, Q3, P3, s1, s11, s12, s13, s2, startingCell, bounds, mode);
 
 		// returning result
 		if (alignment == null) {
 			band = 2. * band <= 1. ? 2. * band : 1.;
+			s2 = mode == AliMode.FREESHIFT_LEFT ? new StringBuffer(s2).reverse().toString() : s2;
 			return run(s1, s2, mode, band);
 		} else {
 			diagonal = null;
@@ -147,9 +148,6 @@ public class Banded_Frameshift_Alignment {
 	// dynamic programming approach following Guan&Uberbacher (1996)
 	private int[] cmpMatrices(int[][] D1, int[][] P1, int[][] Q1, int[][] D2, int[][] P2, int[][] Q2, int[][] D3, int[][] P3, int[][] Q3, int i,
 			int j, String s, String s2, int frame) {
-
-		// boolean debug = (frame == 3 && i == 5 && j == 5);
-		// String log = "";
 
 		// checking for staying in frame 1
 		int m1 = add(D1[i - 1][j - 1], scoringMatrix.getScore(s.charAt(i - 1), s2.charAt(j - 1)));
@@ -354,7 +352,7 @@ public class Banded_Frameshift_Alignment {
 
 	// ***********************************************************
 
-	private void printMatrix(Integer[][] M, String s1, String s2) {
+	private void printMatrix(int[][] M, String s1, String s2) {
 
 		System.out.print("\t\t");
 		for (int i = 0; i < s2.length(); i++)

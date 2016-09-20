@@ -19,11 +19,12 @@ public class DAA_Hit {
 
 	private byte[] totalQuerySequence;
 
-	// ref properties
+	// reference properties
 	private int refStart;
 	private int refLength;
 	private int totalRefLength;
 
+	private int subjectID;
 	private String refName;
 
 	// hit properties
@@ -49,9 +50,9 @@ public class DAA_Hit {
 		int bits = hasN ? 3 : 2;
 
 		buffer.order(ByteOrder.LITTLE_ENDIAN);
-
 		byte[] packed = new byte[(totalQueryLength * bits + 7) / 8];
 		buffer.get(packed);
+
 		if (parseAlignment)
 			totalQuerySequence = getUnpackedSequence(packed, totalQueryLength, bits);
 
@@ -59,7 +60,8 @@ public class DAA_Hit {
 
 	public void parseHitProperties(DAA_Header header, ByteBuffer buffer, boolean parseAlignment) throws IOException {
 
-		int subjectID = buffer.getInt();
+		subjectID = buffer.getInt();
+
 		int flag = buffer.get() & 0xFF;
 
 		rawScore = readPacked(flag & 3, buffer);
@@ -94,7 +96,7 @@ public class DAA_Hit {
 				break;
 			}
 			v.add(op);
-			op = (int) buffer.get() & 0xFF;
+			op = buffer.get() & 0xFF;
 		}
 		editOperations = v.toArray(new Integer[v.size()]);
 
@@ -207,6 +209,10 @@ public class DAA_Hit {
 			}
 		}
 		return result;
+	}
+
+	public int getSubjectID() {
+		return subjectID;
 	}
 
 	public long getFilePointer() {

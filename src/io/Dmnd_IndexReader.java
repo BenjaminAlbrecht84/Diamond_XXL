@@ -10,41 +10,59 @@ import java.util.HashMap;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 
+import util.SparseString;
+
 public class Dmnd_IndexReader {
 
 	private File dmndFile;
 
-	private ConcurrentHashMap<Integer, Long> giIndex;
+	private ConcurrentHashMap<SparseString, SparseLong> giIndex;
 	private Vector<long[]> seqLocations;
+
+	private boolean giveWarnings = false;
+	private int indexChunk = 0, totalIndexChunks = 1, totalNumberOfSeqIDs = 0;
 
 	public Dmnd_IndexReader(File dmndFile) {
 		this.dmndFile = dmndFile;
 	}
 
+	public Dmnd_IndexReader(File dmndFile, int indexChunk, int totalIndexChunks) {
+		this.dmndFile = dmndFile;
+		this.indexChunk = indexChunk;
+		this.totalIndexChunks = totalIndexChunks;
+	}
+
 	public void createIndex() {
-		
+
 		System.out.println("STEP_5>Indexing reference database...");
 		long time = System.currentTimeMillis();
 
 		parseSeqLocations();
-		giIndex = new ConcurrentHashMap<Integer, Long>();
+		giIndex = new ConcurrentHashMap<SparseString, SparseLong>();
 		giIndex.putAll(mapGIs());
-		
-		long runtime = (System.currentTimeMillis() - time)  / 1000;
+
+		long runtime = (System.currentTimeMillis() - time) / 1000;
 		int proc = (int) Math.ceil(((double) (giIndex.keySet().size()) / (double) seqLocations.size()) * 100.);
-		System.out.println("OUTPUT>" + proc + "% (" + giIndex.keySet().size() + "/" + seqLocations.size() + ") of the GI's mapped. [" + runtime + "s]\n");
-		
+		System.out.println(
+				"OUTPUT>" + giIndex.keySet().size() + "/" + totalNumberOfSeqIDs + " SeqIDs mapped. [" + runtime + "s]\n");
+
 		seqLocations = null;
 
 	}
 
-	public HashMap<Integer, Long> getGILocations(Vector<Integer> gIs) {
-
-		HashMap<Integer, Long> gILocations = new HashMap<Integer, Long>();
-		for (int gi : gIs)
-			gILocations.put(gi, giIndex.get(gi));
-
+	public HashMap<SparseString, Long> getGILocations(Vector<SparseString> gIs) {
+		HashMap<SparseString, Long> gILocations = new HashMap<SparseString, Long>();
+		for (SparseString gi : gIs) {
+			if (giIndex.containsKey(gi))
+				gILocations.put(gi, new Long(giIndex.get(gi).getValue()));
+		}
 		return gILocations;
+	}
+
+	public Long getGILocation(SparseString gi) {
+		if (giIndex.containsKey(gi))
+			return giIndex.get(gi).getValue();
+		return null;
 	}
 
 	private void parseSeqLocations() {
@@ -86,19 +104,28 @@ public class Dmnd_IndexReader {
 				if (skipped != offset)
 					throw new IllegalArgumentException("ERROR: Too less bytes have been skipped! " + skipped + " " + offset);
 
+				Vector<long[]> allSeqLocations = new Vector<long[]>();
 				while ((readChars = is.read(buffer.array())) != -1) {
-
 					for (int i = 0; i < readChars - 15; i += 16) {
-
 						long start = (long) buffer.getLong(i);
 						long length = (long) buffer.getLong(i + 8);
 						if (length != 0) {
 							long[] loc = { start, length };
-							seqLocations.add(loc);
+							allSeqLocations.add(loc);
 						}
 
 					}
 
+				}
+				totalNumberOfSeqIDs = allSeqLocations.size();
+
+				// storing relevant seqLocations
+				int chunkSize = (int) Math.ceil((double) allSeqLocations.size() / (double) totalIndexChunks);
+				int start = indexChunk * chunkSize, end = start + chunkSize;
+				for (int i = start; i < end; i++) {
+					if (i == allSeqLocations.size())
+						break;
+					seqLocations.addElement(allSeqLocations.get(i));
 				}
 
 			} finally {
@@ -110,9 +137,9 @@ public class Dmnd_IndexReader {
 		}
 	}
 
-	private ConcurrentHashMap<Integer, Long> mapGIs() {
+	private ConcurrentHashMap<SparseString, SparseLong> mapGIs() {
 
-		ConcurrentHashMap<Integer, Long> giToPointer = new ConcurrentHashMap<Integer, Long>();
+		ConcurrentHashMap<SparseString, SparseLong> giToPointer = new ConcurrentHashMap<SparseString, SparseLong>();
 		try {
 			InputStream is = new BufferedInputStream(new FileInputStream(dmndFile));
 			try {
@@ -135,10 +162,10 @@ public class Dmnd_IndexReader {
 					if (giBuffer.length() != 0) {
 						for (int i = 0; i < readBytes; i++) {
 							int val = (int) buffer.get(i);
-							if (val == 124) {
-								int gi = Integer.parseInt(giBuffer.toString());
+							if (val == 32 || val == 0) {
+								SparseString gi = new SparseString(giBuffer.toString());
+								giToPointer.put(gi, new SparseLong(seqLocations.get(lastK)[0]));
 								giBuffer = new StringBuffer();
-								giToPointer.put(gi, seqLocations.get(lastK)[0]);
 								lastK++;
 								break;
 							}
@@ -151,7 +178,7 @@ public class Dmnd_IndexReader {
 
 						// k = seqLocations.get(k) == null ? k + 1 : k;
 						long[] loc = seqLocations.get(k);
-						long giStart = (loc[0] + loc[1] + 5) - (allocSize * iterations);
+						long giStart = (loc[0] + loc[1] + 2) - (allocSize * iterations);
 
 						// checking if GI is in current buffer
 						if (giStart >= readBytes) {
@@ -166,14 +193,15 @@ public class Dmnd_IndexReader {
 								break;
 
 							int val = (int) buffer.get((int) i);
-							if (val == 124) {
+							if (val == 32 || val == 0) {
 								try {
-									int gi = Integer.parseInt(giBuffer.toString());
+									SparseString gi = new SparseString(giBuffer.toString());
+									giToPointer.put(gi, new SparseLong(loc[0]));
 									giBuffer = new StringBuffer();
-									giToPointer.put(gi, loc[0]);
 									break;
 								} catch (Exception e) {
 									e.printStackTrace();
+									System.exit(0);
 								}
 							}
 							giBuffer = giBuffer.append((char) val);
@@ -209,7 +237,38 @@ public class Dmnd_IndexReader {
 
 	}
 
-	public ConcurrentHashMap<Integer, Long> getGiIndex() {
+	public class SparseLong {
+
+		private final long l;
+
+		public SparseLong(long l) {
+			this.l = l;
+		}
+
+		public long getValue() {
+			return l;
+		}
+
+	}
+
+	public int getNumberOfSequences() {
+		try {
+			InputStream is = new BufferedInputStream(new FileInputStream(dmndFile));
+			try {
+				ByteBuffer buffer = ByteBuffer.allocate(40);
+				buffer.order(ByteOrder.LITTLE_ENDIAN);
+				is.read(buffer.array());
+				return buffer.getInt(16);
+			} finally {
+				is.close();
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return -1;
+	}
+
+	public ConcurrentHashMap<SparseString, SparseLong> getGiIndex() {
 		return giIndex;
 	}
 

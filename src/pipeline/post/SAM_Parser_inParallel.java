@@ -19,6 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import util.SparseString;
 import util.ScoringMatrix;
 
 public class SAM_Parser_inParallel {
@@ -29,8 +30,7 @@ public class SAM_Parser_inParallel {
 	private AtomicInteger parsedLines = new AtomicInteger(0);
 	private int last_p = 0, numOfLines;
 
-	public ConcurrentHashMap<String, ReadHits> parse_Hits(File sam_file, ScoringMatrix matrix, HitRun_Rater scorer,
-			int cores) {
+	public ConcurrentHashMap<String, ReadHits> parse_Hits(File sam_file, ScoringMatrix matrix, HitRun_Rater scorer, int cores) {
 
 		readMap = new ConcurrentHashMap<String, ReadHits>();
 
@@ -50,7 +50,6 @@ public class SAM_Parser_inParallel {
 			for (Parser thread : allParser)
 				executor.execute(thread);
 
-			
 			// awaiting termination
 			try {
 				latch.await();
@@ -152,7 +151,7 @@ public class SAM_Parser_inParallel {
 				int readCounter = 0;
 				String l;
 				while ((l = raf.readLine()) != null) {
-					
+
 					if (localReadMap.keySet().size() == 1)
 						break;
 
@@ -223,7 +222,7 @@ public class SAM_Parser_inParallel {
 						}
 
 						// gi of the matched subsequence
-						int gi = Integer.parseInt(mySplit(columns[2], '|')[1]);
+						SparseString gi = new SparseString(columns[2]);
 						// int gi =
 						// Integer.parseInt(columns[2].split("\\|")[1]);
 
@@ -239,19 +238,19 @@ public class SAM_Parser_inParallel {
 						// int aliScoresSum = (int) scoring_result[3];
 
 						read_num = frame < 0 ? -read_num : read_num;
-						
-						System.out.println(read_num+" "+ref_start+" "+ref_end+" "+bitScore+" "+rawScore+" "+file_pointer+" "+query_start+" "+ref_length+" "+query_length);
-						
+
+						System.out.println(read_num + " " + ref_start + " " + ref_end + " " + bitScore + " " + rawScore + " " + file_pointer + " "
+								+ query_start + " " + ref_length + " " + query_length);
+
 						// Storing Hit
-						Hit h = new Hit(read_num, ref_start, ref_end, bitScore, rawScore, file_pointer, null, query_start,
-								ref_length, query_length);
+						Hit h = new Hit(read_num, ref_start, ref_end, bitScore, rawScore, file_pointer, null, query_start, ref_length, query_length,
+								-1);
 						if (!localReadMap.containsKey(read_id))
 							localReadMap.put(read_id, new ReadHits());
 						localReadMap.get(read_id).add(h, gi, frame);
 
 						if (readCounter % 1000 == 0) {
-							int p = (int) Math
-									.round(((double) parsedLines.addAndGet(1000) / (double) numOfLines) * 100.);
+							int p = (int) Math.round(((double) parsedLines.addAndGet(1000) / (double) numOfLines) * 100.);
 							reportProgress(p);
 						}
 
@@ -294,7 +293,7 @@ public class SAM_Parser_inParallel {
 			if (!readMap.containsKey(read_id))
 				readMap.put(read_id, new ReadHits());
 			ReadHits hits = localReadMap.get(read_id);
-			for (int gi : hits.getHitMap().keySet()) {
+			for (SparseString gi : hits.getHitMap().keySet()) {
 				for (int frame : hits.getHitMap().get(gi).keySet()) {
 					for (Hit h : hits.getHitMap().get(gi).get(frame))
 						readMap.get(read_id).add(h, gi, frame);

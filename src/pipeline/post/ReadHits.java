@@ -1,14 +1,15 @@
 package pipeline.post;
 
-import java.util.HashMap;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 
+import util.SparseString;
+
 public class ReadHits {
 
-	private ConcurrentHashMap<Integer, ConcurrentHashMap<Integer, Vector<Hit>>> hitMap = new ConcurrentHashMap<Integer, ConcurrentHashMap<Integer, Vector<Hit>>>();
+	private ConcurrentHashMap<SparseString, ConcurrentHashMap<Integer, Vector<Hit>>> hitMap = new ConcurrentHashMap<SparseString, ConcurrentHashMap<Integer, Vector<Hit>>>();
 
-	public void add(Hit h, int gi, int frame) {
+	public void add(Hit h, SparseString gi, int frame) {
 
 		if (!hitMap.containsKey(gi))
 			hitMap.put(gi, new ConcurrentHashMap<Integer, Vector<Hit>>());
@@ -22,13 +23,13 @@ public class ReadHits {
 
 	}
 
-	public ConcurrentHashMap<Integer, ConcurrentHashMap<Integer, Vector<Hit>>> getHitMap() {
+	public ConcurrentHashMap<SparseString, ConcurrentHashMap<Integer, Vector<Hit>>> getHitMap() {
 		return hitMap;
 	}
 
 	public Vector<Hit> getAllHits() {
 		Vector<Hit> allHits = new Vector<Hit>();
-		for (Integer gi : hitMap.keySet()) {
+		for (SparseString gi : hitMap.keySet()) {
 			for (int frame : hitMap.get(gi).keySet()) {
 				for (Hit h : hitMap.get(gi).get(frame)) {
 					allHits.add(h);
@@ -39,7 +40,7 @@ public class ReadHits {
 	}
 
 	public void print() {
-		for (Integer gi : hitMap.keySet()) {
+		for (SparseString gi : hitMap.keySet()) {
 			System.out.println(">GI: " + gi);
 			for (int frame : hitMap.get(gi).keySet()) {
 				System.out.println("\t>>Frame: " + frame);
@@ -50,13 +51,13 @@ public class ReadHits {
 		}
 	}
 
-	public void freeFrameHits(int gi, int frame) {
+	public void freeFrameHits(SparseString gi, int frame) {
 		for (Hit h : hitMap.get(gi).get(frame))
 			h.freeMemory();
 		hitMap.get(gi).remove(frame);
 	}
 
-	public void freeGiHits(int gi) {
+	public void freeGiHits(SparseString gi) {
 		for (int frame : hitMap.get(gi).keySet())
 			freeFrameHits(gi, frame);
 		hitMap.remove(gi);

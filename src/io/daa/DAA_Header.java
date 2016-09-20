@@ -34,9 +34,7 @@ public class DAA_Header {
 
 	private final int referenceLocationChunkBits = 6; // 6 bits = 64 chunk size
 	private final int referenceLocationChunkSize = 1 << referenceLocationChunkBits;
-	private long[] referenceLocations; // location of every
-										// 2^referenceLocationChunkBits
-										// reference
+	private long[] referenceLocations; // location of every 2^referenceLocationChunkBits reference
 
 	// reference annotations:
 	protected int numberOfRefAnnotations;
@@ -70,8 +68,8 @@ public class DAA_Header {
 
 			try {
 
-				// magicNumber = buffer.getLong(0);
-				// version = buffer.getLong(8);
+				magicNumber = buffer.getLong(0);
+				version = buffer.getLong(8);
 
 				// diamondBuild = buffer.getLong(16);
 				// dbSeqs = buffer.getLong(24);
@@ -99,8 +97,9 @@ public class DAA_Header {
 				// scoreMatrix[i] = (byte) buffer.get();
 
 				buffer.position(144);
-				for (int i = 0; i < blockSize.length; i++)
+				for (int i = 0; i < blockSize.length; i++) {
 					blockSize[i] = buffer.getLong();
+				}
 
 				buffer.position(2192);
 				for (int i = 0; i < blockTypeRank.length; i++) {
@@ -166,6 +165,7 @@ public class DAA_Header {
 	}
 
 	public byte[] getReference(int index) throws IOException {
+
 		if (references[index] != null)
 			return references[index];
 
@@ -225,6 +225,10 @@ public class DAA_Header {
 
 	public BigInteger getDbLetters() {
 		return dbLetters;
+	}
+
+	public long getHeaderSize() {
+		return headerSize;
 	}
 
 }

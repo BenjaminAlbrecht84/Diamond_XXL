@@ -45,7 +45,17 @@ public class Fastq_Reader {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		return reads;
+
+//		Vector<Read> filteredReads = new Vector<Read>();
+//		for (int i = 366; i < 367; i++) {
+//			System.out.println(reads.get(i).getId());
+//			System.out.println(reads.get(i).getSeq());
+//			filteredReads.add(reads.get(i));
+//		}
+//		return filteredReads;
+
+		 return reads;
+		 
 	}
 
 	public ConcurrentHashMap<String, Long> parseReadIDs(File fastq_File) {
@@ -68,7 +78,7 @@ public class Fastq_Reader {
 						buf = buf.append(c);
 					} else if ((c == '@' && lineCounter == 0) || c == '>') {
 						parseID = true;
-					} 
+					}
 					if (c == '\n' && buf.length() != 0) {
 						readToPointer.put(buf.toString(), pointer + i);
 						buf = new StringBuffer();

@@ -3,12 +3,14 @@ package pipeline.post;
 import java.io.File;
 import java.io.RandomAccessFile;
 import java.util.BitSet;
+import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import io.daa.DAA_Reader;
 import pipeline.post.Hit.HitType;
 import util.CompressAlignment;
+import util.DAACompressAlignment;
 import util.ReconstructAlignment;
 import util.ScoringMatrix;
 
@@ -33,10 +35,8 @@ public class Alignment_Merger {
 			h2 = hMem;
 		}
 
-		// System.out.println(h1.getRef_start() + " " + h2.getRef_start());
-
-		if (h1.getRef_end() < h2.getRef_start())
-			throw new IllegalArgumentException("Hits have no overlap!");
+		if (h1.getRef_end() < h2.getRef_start() - 1)
+			throw new IllegalArgumentException("Hits have no overlap nor are consecutive!");
 		else if (h1.getRef_end() >= h2.getRef_end()) {
 			return h1;
 		}
@@ -67,9 +67,9 @@ public class Alignment_Merger {
 			query_insertions.set(i, h1.isQueryInsertion(i));
 			query_deletions.set(i, h1.isQueryDeletion(i));
 		}
+
 		for (int i = o2; i < h2.getAliLength(); i++) {
 			int index = h1.getAliLength() + i - o2;
-
 			scores[index] = scores2[i];
 			rawScore += scores[index];
 			query_insertions.set(index, h2.isQueryInsertion(i));
@@ -86,13 +86,38 @@ public class Alignment_Merger {
 		// generating new alignment strings
 		String[] aliStrings1 = daaReader == null ? h1.getAlignmentStrings(rafSAM) : h1.getAlignmentStrings(rafDAA, daaReader);
 		String[] aliStrings2 = daaReader == null ? h2.getAlignmentStrings(rafSAM) : h2.getAlignmentStrings(rafDAA, daaReader);
-		String[] aliStrings = mergeAliStrings(aliStrings1, aliStrings2, o2, matrix);
+		String[] mergeResult = mergeAliStrings(aliStrings1, aliStrings2, o2, matrix);
 
 		// initializing new hit
 		Hit h = new Hit(h1.getId(), h1.getRef_start(), h2.getRef_end(), bitScore, rawScore, h1.getFile_pointer(), h1.getAccessPoint(),
-				h1.getQuery_start(), h1.getRef_length(), queryLength, scores, query_insertions, query_deletions);
+				h1.getQuery_start(), h1.getRef_length(), queryLength, scores, query_insertions, query_deletions, h1.getSubjectID());
+		String[] aliStrings = { mergeResult[0], mergeResult[1], mergeResult[2] };
 		h.copyAliStrings(aliStrings);
 		h.setHitType(HitType.Merged);
+		h.setFrame(h1.getFrame());
+
+		Object[] alis = new ReconstructAlignment(matrix).run(mergeResult[1], mergeResult[0], mergeResult[2]);
+		String[] ali = { (String) alis[4], (String) alis[5] };
+		for (int k = 0; k < ali[0].length(); k++) {
+			char c1 = ali[0].charAt(k);
+			char c2 = ali[1].charAt(k);
+			if (c1 == '-' && c2 == '-') {
+				System.out.println(mergeResult[3] + "\n" + mergeResult[4]);
+				System.out.println(mergeResult[0]);
+				System.out.println(mergeResult[1]);
+				System.out.println(mergeResult[2]);
+				System.out.println(ali[0] + "\n" + ali[1] + "\n");
+			}
+		}
+
+		if (h1.getMetaInfo() != null) {
+			Object[] meta = new Object[3];
+			meta[0] = new Integer((int) h1.getMetaInfo()[0]);
+			meta[1] = new Integer((int) h1.getMetaInfo()[1]);
+			String[] mergedAli = { mergeResult[3], mergeResult[4] };
+			meta[2] = new DAACompressAlignment().run(mergedAli);
+			h.setMetaInfo(meta);
+		}
 
 		return h;
 
@@ -109,17 +134,12 @@ public class Alignment_Merger {
 		// merging both alignments
 		String[] ali = mergeAlignments(ali1, ali2, o);
 
-		// System.out.println("\n" + ali1[0] + "\n" + ali1[1]);
-		// String pad = "";
-		// while (pad.length() < ali1[0].length() - o)
-		// pad = pad.concat(" ");
-		// System.out.println(pad + "" + ali2[0] + "\n" + pad + "" + ali2[1]);
-		// System.out.println(ali[0] + "\n" + ali[1]);
-
 		// compressing merged alignment
 		String[] aliStrings = new CompressAlignment().run(ali);
 
-		return aliStrings;
+		String[] result = { aliStrings[0], aliStrings[1], aliStrings[2], ali[0], ali[1] };
+		return result;
+
 	}
 
 	private String[] mergeAlignments(String[] ali1, String[] ali2, int o) {

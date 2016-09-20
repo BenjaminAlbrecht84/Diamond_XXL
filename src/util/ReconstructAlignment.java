@@ -12,7 +12,7 @@ public class ReconstructAlignment {
 	public ReconstructAlignment(ScoringMatrix matrix) {
 		this.matrix = matrix;
 	}
-	
+
 	public Object[] run(String seq, String cigar, String md) {
 
 		// System.out.println("\n>" + seq + " " + cigar + " " + md + "\n");
@@ -27,7 +27,7 @@ public class ReconstructAlignment {
 		}
 
 		// calculate ref string
-		String ref = reconstructRefSeq(seq, md, (Vector<Integer[]>) queryResult[1]);
+		String ref = reconstructRefSeq(seq, md, (Vector<Integer[]>) queryResult[1], query);
 
 		String[] alignments = { query, ref };
 		return run(alignments);
@@ -76,6 +76,7 @@ public class ReconstructAlignment {
 			if (type == 'M' || type == 'I') {
 				query = query.append(seq.substring(i, i + num));
 				if (type == 'I') {
+					// System.out.println(query.length() - num - d);
 					Integer[] ins = { query.length() - num - d, num };
 					insertions.add(ins);
 				}
@@ -94,7 +95,7 @@ public class ReconstructAlignment {
 		return result;
 	}
 
-	private String reconstructRefSeq(String seq, String md, Vector<Integer[]> insertions) {
+	private String reconstructRefSeq(String seq, String md, Vector<Integer[]> insertions, String query) {
 
 		Vector<MD_Item> items = new Vector<MD_Item>();
 		MD_Item curr_item = new MD_Item(md.charAt(0));
@@ -120,8 +121,9 @@ public class ReconstructAlignment {
 				refBuf = refBuf.append(item.getSeq());
 				pos += item.getSeq().length();
 			} else if (item.getType() == 'D') {
-				for (int i = refBuf.length(); i < refBuf.length() + item.getSeq().length(); i++)
+				for (int i = refBuf.length(); i < refBuf.length() + item.getSeq().length(); i++) {
 					deletionSites.add(i);
+				}
 				refBuf = refBuf.append(item.getSeq());
 			} else
 				System.err.print("ERROR: Parsing MD-String - unknown type " + item.getType());
@@ -134,13 +136,15 @@ public class ReconstructAlignment {
 		int inserted = 0;
 		for (int i = 0; i < insertions.size(); i++) {
 
-			int num = insertions.get(i)[1];
 			int p = insertions.get(i)[0];
+			int num = insertions.get(i)[1];
 
 			for (int k = 0; k < p - inserted; k++) {
 				if (deletionSet.get(k))
 					p++;
 			}
+			while (query.charAt(p) == '-')
+				p++;
 
 			String gaps = "";
 			for (int k = 0; k < num; k++)
