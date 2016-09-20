@@ -1,16 +1,16 @@
 **DIAMOND_XXL v0.8.1 by Benjamin Albrecht** - https://github.com/BenjaminAlbrecht84/Diamond_XXL
 
-DIAMOND_XXL is an extension of the BLAST-compatible local aligner DIAMOND for mapping **long** DNA query sequences (up to 10kb) against a protein database. In contrast to DIAMOND, DIAMOND_XLL only reports high scoring alignments of query sequences covering **whole** protein sequences. 
+DIAMOND_XXL is an extension of the BLAST-compatible local aligner DIAMOND for mapping **long** DNA query sequences (up to 10kb) against a protein database. In contrast to DIAMOND, DIAMOND_XXL only reports high scoring alignments of query sequences covering **whole** protein sequences. 
 
 Usually, due to some typical properties of the query sequences, such as high numbers of insertions and deletions leading to *Frameshifts* within the corresponding protein sequence, the underlying algorithm of DIAMOND is not suitable for this purpose. However, in the beginning DIAMOND_XXL still makes use of DIAMOND for calculating an initial set of protein sequences, which is then further examined. Note that since DIAMOND is a pretty fast mapping tool (approx. 20,000 times faster than BLAST), this initial step, which is of high computational complexity, is performed in a very efficient way. 
 
 Download & Installation
 =======================
 
-For running the program DIAMOND_XLL you have to perform the following two main steps:
+For running the program DIAMOND_XXL you have to perform the following two main steps:
 
 1. Download and install DIAMOND (v0.8.17 or higher); see http://github.com/bbuchfink/diamond.
-2. Get the runnable jar file ``diamond_xxl-0.8.1.jar`` from https://github.com/BenjaminAlbrecht84/Diamond_XXL/releases/download/v0.8.1/diamond_xxl-0.8.1.jar
+2. Get the runnable jar file ``diamond_xxl-0.8.2.jar`` from https://github.com/BenjaminAlbrecht84/Diamond_XXL/releases/download/v0.8.2/diamond_xxl-0.8.2.jar
 
 Basic command line use
 ======================
@@ -55,4 +55,4 @@ Option     Default Description
 -e         0.001   Maximum sumProbability to keep a run of matches. 
 ========== ======= ===========
 
-DIAMOND_XLL initially calls DIAMOND with its default parameters scoring an alignment with the *BLOSUM62* Matrix, a *gap open penalty* of 11 and a *gap extension penalty* of 1. 
+DIAMOND_XXL initially calls DIAMOND with its default parameters scoring an alignment with the *BLOSUM62* Matrix, a *gap open penalty* of 11 and a *gap extension penalty* of 1. 
