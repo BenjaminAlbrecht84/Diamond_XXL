@@ -5,6 +5,7 @@ import java.util.BitSet;
 
 import io.daa.DAA_Hit;
 import io.daa.DAA_Reader;
+import util.AlignmentEvaluater;
 import util.CompressAlignment;
 import util.ReconstructAlignment;
 import util.ScoringMatrix;
@@ -27,6 +28,7 @@ public class Hit {
 	private BitSet query_insertions;
 	private BitSet query_deletions;
 
+	public int[] aliStats;
 	public String[] aliStrings;
 	private Object[] metaInfo = null;
 
@@ -108,6 +110,24 @@ public class Hit {
 
 	public boolean isQueryDeletion(int pos) {
 		return query_deletions.get(pos);
+	}
+
+	public int[] getAlignmentStats(ScoringMatrix matrix, RandomAccessFile raf) {
+		if (aliStats != null)
+			return aliStats;
+		String[] aliStrings = getAlignmentStrings(raf);
+		Object[] scoringResult = new ReconstructAlignment(matrix).run(aliStrings[1], aliStrings[0], aliStrings[2]);
+		String[] alignment = { (String) scoringResult[4], (String) scoringResult[5] };
+		aliStats = new AlignmentEvaluater().run(alignment, matrix);
+		return aliStats;
+	}
+
+	public int[] getAlignmentStats(ScoringMatrix matrix, RandomAccessFile raf, DAA_Reader daaReader) {
+		if (aliStats != null)
+			return aliStats;
+		DAA_Hit daaHit = daaReader.parseHit(raf, file_pointer, accessPoint);
+		aliStats = new AlignmentEvaluater().run(daaHit.getAlignment(), matrix);
+		return aliStats;
 	}
 
 	public int[] getAlignmentScores(ScoringMatrix matrix, RandomAccessFile raf) {
@@ -273,6 +293,10 @@ public class Hit {
 
 	public int getSubjectID() {
 		return subjectID;
+	}
+
+	public void setAlignmentStats(int[] aliStats) {
+		this.aliStats = aliStats;
 	}
 
 }

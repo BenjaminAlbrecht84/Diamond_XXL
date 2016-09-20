@@ -3,7 +3,9 @@ package pipeline.post;
 import java.io.RandomAccessFile;
 import java.util.Vector;
 
+import io.daa.DAA_Reader;
 import pipeline.post.mode_one.Alignment_Generator_inParallel.Frame_Direction;
+import util.ScoringMatrix;
 import util.SparseString;
 
 public class Hit_Run {
@@ -13,11 +15,12 @@ public class Hit_Run {
 	private Vector<Hit> hitRun;
 	private SparseString gi;
 	private int sumScore, length, rawScore, coverage, runLength;
-	private double eValue;
+	private double sumProbability;
 	private Frame_Direction frameDirection;
+	private int[] aliStats;
 
-	public Hit_Run(Vector<Hit> hitRun, String readID, SparseString gi, int sumScore, int length, int rawScore, Frame_Direction frameDirection, int runLength,
-			Double eValue) {
+	public Hit_Run(Vector<Hit> hitRun, String readID, SparseString gi, int sumScore, int length, int rawScore, Frame_Direction frameDirection,
+			int runLength, Double eValue) {
 		this.hitRun = hitRun;
 		this.readID = readID;
 		this.gi = gi;
@@ -26,7 +29,7 @@ public class Hit_Run {
 		this.rawScore = rawScore;
 		this.frameDirection = frameDirection;
 		this.runLength = runLength;
-		this.eValue = eValue;
+		this.sumProbability = eValue;
 		coverage = getCoverage();
 	}
 
@@ -36,14 +39,22 @@ public class Hit_Run {
 		return coverage;
 	}
 
-	public void update(HitRun_Rater rater, RandomAccessFile rafSAM, RandomAccessFile rafDAA) {
+	public void update(HitRun_Rater rater, RandomAccessFile rafSAM, RandomAccessFile rafDAA, DAA_Reader daaReader, ScoringMatrix matrix) {
 		Object[] res = rater.run(hitRun, frameDirection, rafSAM, rafDAA, readID);
 		sumScore = (int) res[0];
 		length = (int) res[1];
 		rawScore = (int) res[2];
 		runLength = (int) res[3];
-		eValue = (double) res[4];
+		sumProbability = (double) res[4];
 		coverage = getCoverage();
+
+		aliStats = new int[7];
+		for (Hit h : hitRun) {
+			int[] stats = h.getAccessPoint() != null ? h.getAlignmentStats(matrix, rafDAA, daaReader) : h.getAlignmentStats(matrix, rafSAM);
+			for (int i = 0; i < stats.length; i++)
+				aliStats[i] += stats[i];
+		}
+
 	}
 
 	public int getCoverge() {
@@ -96,7 +107,11 @@ public class Hit_Run {
 	}
 
 	public double getEValue() {
-		return eValue;
+		return sumProbability;
+	}
+
+	public int[] getAliStats() {
+		return aliStats;
 	}
 
 }

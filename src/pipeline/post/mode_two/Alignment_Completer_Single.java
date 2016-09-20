@@ -315,7 +315,7 @@ public class Alignment_Completer_Single {
 		// hBef.print("After: ");
 
 		// updating hitRun
-		run.update(hitRunRater, rafSAM, rafDAA);
+		run.update(hitRunRater, rafSAM, rafDAA, daaReader, scoringMatrix);
 		run.setCompleted(true);
 
 	}

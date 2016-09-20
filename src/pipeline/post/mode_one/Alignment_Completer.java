@@ -30,6 +30,7 @@ import pipeline.post.HitToSamConverter;
 import pipeline.post.Hit_Run;
 import pipeline.post.Hit.HitType;
 import pipeline.post.mode_one.Alignment_Generator_inParallel.Frame_Direction;
+import util.AlignmentEvaluater;
 import util.CompressAlignment;
 import util.DAACompressAlignment;
 import util.SparseString;
@@ -235,7 +236,7 @@ public class Alignment_Completer {
 
 								closeAliGaps(run, giToSeq, readIDToSeq, rafSAM, rafDAA);
 								mergeAlignments(run, rafSAM, rafDAA);
-								run.update(hitRunRater, rafSAM, rafDAA);
+								run.update(hitRunRater, rafSAM, rafDAA, daaReader, scoringMatrix);
 								run.setCompleted(true);
 
 								if (!useFilters || (run.getEValue() < maxEValue && run.getSumScore() > minSumScore && run.getCoverge() > minCoverage))
@@ -625,11 +626,14 @@ public class Alignment_Completer {
 			frame = frame_Direction == Frame_Direction.Positiv ? frame : -frame;
 			Object[] metaInfo = { new Integer(queryStart), new Integer(frame), editOperations };
 
-			int queryLength = 0;
-			for (int i = 0; i < ali[0].length(); i++) {
-				if (ali[0].charAt(i) != '-')
-					queryLength++;
-			}
+			// assessing alignment properties
+			int[] aliStats = new AlignmentEvaluater().run(ali, scoringMatrix);
+			int queryLength = aliStats[aliStats.length - 1];
+			// int queryLength = 0, gapOpen = 0, mismatch = 0, matches;
+			// for (int i = 0; i < ali[0].length(); i++) {
+			// if (ali[0].charAt(i) != '-')
+			// queryLength++;
+			// }
 
 			Hit h = new Hit(-1, refStart, refEnd, bitScore, rawScore, hit.getFile_pointer(), hit.getAccessPoint(), queryStart, refLength, queryLength,
 					hit.getSubjectID());
@@ -638,6 +642,7 @@ public class Alignment_Completer {
 			h.setHitType(HitType.Synthetic);
 			h.setMetaInfo(metaInfo);
 			h.copyAliStrings(aliStrings);
+			h.setAlignmentStats(aliStats);
 
 			return h;
 		}

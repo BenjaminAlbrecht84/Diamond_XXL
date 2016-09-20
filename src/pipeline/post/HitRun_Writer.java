@@ -17,11 +17,13 @@ public class HitRun_Writer {
 
 	private File out, samFile;
 	private DAA_Reader daaReader;
+	private ScoringMatrix matrix;
 
-	public HitRun_Writer(File out, File samFile, DAA_Reader daaReader) {
+	public HitRun_Writer(File out, File samFile, DAA_Reader daaReader, ScoringMatrix matrix) {
 		this.out = out;
 		this.samFile = samFile;
 		this.daaReader = daaReader;
+		this.matrix = matrix;
 		writeHeader();
 	}
 
@@ -31,7 +33,7 @@ public class HitRun_Writer {
 		buf = buf.append("@PG\t PN:DIAMOND_XXL\n");
 		buf = buf.append("@mm\t BlastX\n");
 		buf = buf.append("@CO\t BlastX-like alignments\n");
-		buf = buf.append("@CO\t AS: sumScore, ZS: rawScore, ZE: expected, ZC: coverage, ZQ: query coverlength, ZL: reference length\n");
+		buf = buf.append("@CO\t qseqid sseqid length match mismatch gapopen gaps qstart qend slength scoverage sumscore sumprobability\n");
 
 		try {
 			FileWriter fW = new FileWriter(out, false);
@@ -52,13 +54,32 @@ public class HitRun_Writer {
 			RandomAccessFile rafSAM = new RandomAccessFile(samFile, "r");
 			RandomAccessFile rafDAA = daaReader != null ? new RandomAccessFile(daaReader.getDAAFile(), "r") : null;
 			Collections.sort(runs, new HitRunComparator());
+
 			for (Hit_Run run : runs) {
-				Hit h = run.getHitRun().firstElement();
-				String reference = h.getFile_pointer() != -1 ? getReference(h, h.getFile_pointer(), rafSAM, rafDAA) : "gi|" + run.getGi();
+
+				Hit hFirst = run.getHitRun().firstElement();
+				Hit hLast = run.getHitRun().lastElement();
+				String reference = hFirst.getFile_pointer() != -1 ? getReference(hFirst, hFirst.getFile_pointer(), rafSAM, rafDAA)
+						: "gi|" + run.getGi();
+				int[] aliStats = run.getAliStats();
 				DecimalFormat dfEValue = new DecimalFormat("0.##E0");
-				buf = buf.append(run.getReadID() + "\t" + reference + "\t AS:i:" + run.getSumScore() + "\t ZR:i:" + run.getRawScore() + "\t ZE:f:"
-						+ dfEValue.format(run.getEValue()) + "\t ZC:i:" + run.getCoverge() + "\t ZQ:i:" + run.getRunLength() + "\t ZL:i:"
-						+ run.getHitRun().get(0).getRef_length() + "\n");
+
+				buf = buf.append(run.getReadID() + "\t");
+				buf = buf.append(reference + "\t");
+				buf = buf.append(aliStats[0] + "\t");
+				buf = buf.append(aliStats[1] + "\t");
+				buf = buf.append(aliStats[2] + "\t");
+				buf = buf.append(aliStats[3] + "\t");
+				buf = buf.append(aliStats[4] + "\t");
+				buf = buf.append(aliStats[5] + "\t");
+				buf = buf.append(hFirst.getQuery_start() + "\t");
+				buf = buf.append((hLast.getQuery_start() + hLast.getQuery_length() * 3) + "\t");
+				buf = buf.append(hFirst.getRef_length() + "\t");
+				buf = buf.append(run.getCoverge() + "\t");
+				buf = buf.append(run.getSumScore() + "\t");
+				buf = buf.append(dfEValue.format(run.getEValue()) + "\t");
+				buf = buf.append("\n");
+
 			}
 			rafSAM.close();
 			if (rafDAA != null)

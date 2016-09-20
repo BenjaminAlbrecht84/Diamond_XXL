@@ -101,7 +101,7 @@ public class Main {
 
 		// initializing run writer
 		File out_runs = new File(outputFolder.getAbsolutePath() + File.separator + queryName + ".runs");
-		HitRun_Writer runWriter = new HitRun_Writer(out_runs, samFile, daaReader);
+		HitRun_Writer runWriter = new HitRun_Writer(out_runs, samFile, daaReader, matrix);
 
 		// completing alignments
 		new Alignment_Completer().run(hitRuns, queryFile, dbFile, samFile, daaReader, matrix, dR.getLambda(), dR.getK(), cores, scorer, step,
