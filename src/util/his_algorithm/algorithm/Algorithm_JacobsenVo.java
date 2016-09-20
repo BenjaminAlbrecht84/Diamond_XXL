@@ -11,8 +11,8 @@ import util.his_algorithm.splay_tree.SplayTree;
 
 public class Algorithm_JacobsenVo {
 
-	public Vector<Hit> run(Hit[] sequence, HitRun_Rater scorer, Frame_Direction dir, RandomAccessFile rafSAM, RandomAccessFile rafDAA, String readID,
-			int gi) {
+	public Vector<Hit> run(Hit[] sequence, HitRun_Rater scorer, Frame_Direction dir, RandomAccessFile rafSAM, RandomAccessFile rafDAA,
+			String readID) {
 
 		SplayTree L = new SplayTree();
 		double max = 0;
@@ -28,7 +28,7 @@ public class Algorithm_JacobsenVo {
 			SplayNode t = s != null ? L.nextNode(s.getId()) : L.getMin();
 			double w = t != null ? t.getWeight() : 0;
 
-			double hicWeight = cmpWeight(s, e_i, sequence, scorer, dir, rafSAM, rafDAA, readID, gi);
+			double hicWeight = cmpWeight(s, e_i, sequence, scorer, dir, rafSAM, rafDAA, readID);
 			while (t != null) {
 				// if (v + e_i.getWeight() < w)
 				// break;
@@ -68,7 +68,7 @@ public class Algorithm_JacobsenVo {
 	}
 
 	private double cmpWeight(SplayNode v, Hit e_i, Hit[] sequence, HitRun_Rater scorer, Frame_Direction dir, RandomAccessFile rafSAM,
-			RandomAccessFile rafDAA, String readID, int gi) {
+			RandomAccessFile rafDAA, String readID) {
 
 		Vector<Hit> hic = new Vector<Hit>();
 		extractHitRun(v, hic, sequence);
@@ -85,7 +85,7 @@ public class Algorithm_JacobsenVo {
 		// return (int) Math.round(Math.log(Math.pow((double) score, (double)
 		// coverage)));
 
-		return (int) scorer.run(hic, dir, rafSAM, rafDAA, readID, gi)[2];
+		return (int) scorer.run(hic, dir, rafSAM, rafDAA, readID)[2];
 	}
 
 	private void extractHitRun(SplayNode v, Vector<Hit> run, Hit[] sequence) {
