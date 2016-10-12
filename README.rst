@@ -10,7 +10,7 @@ Download & Installation
 For running the program DIAMOND_XXL you have to perform the following two main steps:
 
 1. Download and install DIAMOND (v0.8.17 or higher); see http://github.com/bbuchfink/diamond.
-2. Get the runnable jar file ``diamond_xxl-0.8.2.jar`` from https://github.com/BenjaminAlbrecht84/Diamond_XXL/releases/download/v0.8.2/diamond_xxl-0.8.2.jar
+2. Get the runnable jar file ``diamond_xxl-0.8.2.jar`` from https://github.com/BenjaminAlbrecht84/Diamond_XXL/releases/download/untagged-3c327d718f57e2a8841a/diamond_xxl-0.8.3.jar
 
 Basic command line use
 ======================
