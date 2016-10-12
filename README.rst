@@ -1,4 +1,4 @@
-**DIAMOND_XXL v0.8.1 by Benjamin Albrecht** - https://github.com/BenjaminAlbrecht84/Diamond_XXL
+**DIAMOND_XXL v0.8.3 by Benjamin Albrecht** - https://github.com/BenjaminAlbrecht84/Diamond_XXL
 
 DIAMOND_XXL is an extension of the BLAST-compatible local aligner DIAMOND for mapping **long** DNA query sequences (up to 30kb) against a protein database. In contrast to DIAMOND, DIAMOND_XXL only reports high scoring alignments of query sequences covering **huge parts** of protein sequences. 
 
