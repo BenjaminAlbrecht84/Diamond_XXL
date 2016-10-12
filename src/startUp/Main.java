@@ -5,6 +5,7 @@ import io.daa.DAA_Reader;
 import io.daa.DAA_Writer;
 
 import java.io.File;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Locale;
 import java.util.Vector;
@@ -28,7 +29,7 @@ public class Main {
 		DAA, SAM
 	}
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 
 		ParseMode parseMode = Main.ParseMode.DAA;
 
@@ -72,6 +73,9 @@ public class Main {
 		} else {
 			daaFile = dR.execute(dbFile, shredded_query, outputFolder, cores, parseMode);
 			samFile = new File(outputFolder.getAbsolutePath() + File.separator + queryName + "_tmp.sam");
+			samFile.delete();
+			samFile.delete();
+			samFile.createNewFile();
 		}
 
 		// parsing db properties
