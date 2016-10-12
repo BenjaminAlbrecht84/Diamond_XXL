@@ -10,7 +10,7 @@ Download & Installation
 For running the program DIAMOND_XXL you have to perform the following two main steps:
 
 1. Download and install DIAMOND (v0.8.17 or higher); see http://github.com/bbuchfink/diamond.
-2. Get the runnable jar file ``diamond_xxl-0.8.2.jar`` from https://github.com/BenjaminAlbrecht84/Diamond_XXL/releases/download/untagged-3c327d718f57e2a8841a/diamond_xxl-0.8.3.jar
+2. Get the runnable jar file ``diamond_xxl-0.8.3.jar`` from https://github.com/BenjaminAlbrecht84/Diamond_XXL/releases/download/untagged-3c327d718f57e2a8841a/diamond_xxl-0.8.3.jar
 
 Basic command line use
 ======================
@@ -36,7 +36,7 @@ where the ``-exe`` option specifies the path to the DIAMOND binary file and the 
 
 The output is automatically written into the output folder specified by the ``-a`` option. It consists of the two files ``reads.daa`` and ``reads.runs``.
 
-- The binary file ``reads.daa`` containing all matches in the typical *DAA* format. Note that this file can be converted into other formats 
+- The binary file ``reads.daa`` containing all matches in the typical *DAA* format. Note that this file can be converted into other formats by using DIAMOND.
 - The file ``reads.runs`` listing all runs of matches covering huge parts of protein sequences.
 
 Options
@@ -53,6 +53,7 @@ Option     Default Description
 -l         1000    Length of the shredded reads. 
 -s         30      Minimum sumScore to keep a run of matches.
 -e         0.001   Maximum sumProbability to keep a run of matches. 
+--realign          Realings all alignments reported by DIAMOND.
 ========== ======= ===========
 
 Additionally, all specific DIAMOND options can be passed in for configuring the execution of DIAMOND.
