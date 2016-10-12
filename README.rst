@@ -30,9 +30,9 @@ This will create a DIAMOND database file with name ``nr.dmnd``.
 
 The alignment task can then be initiated by running DIMAOND_XXL like this::
 
-    $ java -Xmx 10g -jar diamond_xxl.jar -exe <diamond_binary> -d nr.dmnd -q reads.fna -a <output_folder>
+    $ java -Xmx 10g -jar diamond_xxl.jar -exe <diamond_binary> -d nr.dmnd -q reads.fna -o <output_folder>
 
-where the ``-exe`` option specifies the path to the DIAMOND binary file and the ``-a`` option specifies the path to the output folder. Please get sure that you have installed DIAMOND v0.8.17 or higher, otherwise the program will not be able to read the ``nr.dmnd`` file. Moreover, please do not forget to ensure that the JVM gets enough memory. 
+where the ``-exe`` option specifies the path to the DIAMOND binary file and the ``-o`` option specifies the path to the output folder. Please get sure that you have installed DIAMOND v0.8.17 or higher, otherwise the program will not be able to read the ``nr.dmnd`` file. Moreover, please do not forget to ensure that the JVM gets enough memory. 
 
 The output is automatically written into the output folder specified by the ``-a`` option. It consists of the two files ``reads.daa`` and ``reads.runs``.
 
@@ -48,7 +48,7 @@ Option     Default Description
 -exe               Path to DIAMOND binary file.
 -d                 Path to DIAMOND database file.
 -q                 Path to query input file in FASTA or FASTQ format.
--a                 Path to output folder.
+-o                 Path to output folder.
 -p         max     Number of CPU threads.
 -l         1000    Length of the shredded reads. 
 -s         30      Minimum sumScore to keep a run of matches.
