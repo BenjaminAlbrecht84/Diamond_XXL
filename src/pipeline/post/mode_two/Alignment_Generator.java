@@ -186,7 +186,7 @@ public class Alignment_Generator {
 										h.setId(hitToID.get(h));
 
 									// store best HIS
-									Object[] res = runRater.run(his, dir, rafSAM, rafDAA, read_name);
+									Object[] res = runRater.run(his, dir, rafSAM, rafDAA, read_name, true);
 									if (bestHIS == null || (int) res[2] > bestScore) {
 										bestHIS = his;
 										bestScore = (int) res[2];
@@ -333,7 +333,7 @@ public class Alignment_Generator {
 
 				if (hL.getRef_start() < hR.getRef_start() || hL.getQuery_length() < hR.getQuery_length()) {
 
-					Hit hM = new Alignment_Merger(scorer, sam_file, daaReader).mergeTwoHits(hL, hR, matrix, rafSAM, rafDAA);
+					Hit hM = new Alignment_Merger(scorer, sam_file, daaReader).mergeTwoHits(hL, hR, matrix, rafSAM, rafDAA, null, null, null);
 
 					resHits.remove(hL);
 					resHits.add(hM);

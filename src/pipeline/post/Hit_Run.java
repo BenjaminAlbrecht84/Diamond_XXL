@@ -40,7 +40,7 @@ public class Hit_Run {
 	}
 
 	public void update(HitRun_Rater rater, RandomAccessFile rafSAM, RandomAccessFile rafDAA, DAA_Reader daaReader, ScoringMatrix matrix) {
-		Object[] res = rater.run(hitRun, frameDirection, rafSAM, rafDAA, readID);
+		Object[] res = rater.run(hitRun, frameDirection, rafSAM, rafDAA, readID, false);
 		sumScore = (int) res[0];
 		length = (int) res[1];
 		rawScore = (int) res[2];

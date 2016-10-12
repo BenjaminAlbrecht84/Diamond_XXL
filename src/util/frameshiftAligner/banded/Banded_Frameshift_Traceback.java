@@ -52,7 +52,7 @@ public class Banded_Frameshift_Traceback {
 				return null;
 			else if (i == 0 && j == 0)
 				break;
-			else if (j == 0 && mode == AliMode.FREESHIFT)
+			else if (j == 0 && mode == AliMode.SEMI_GLOBAL)
 				break;
 
 		}
@@ -64,9 +64,9 @@ public class Banded_Frameshift_Traceback {
 			alignment[2] = alignment[2].reverse();
 		}
 
-		int qAligned = mode == AliMode.FREESHIFT_LEFT ? startingCell[0] : cell[0];
+		int[] alignedInfo = mode == AliMode.FREESHIFT_LEFT ? startingCell : mode == AliMode.FREESHIFT_RIGHT ? startingCell : cell;
 		int aliScore = startingCell[3];
-		Object[] res = { alignment[0].toString(), alignment[1].toString(), alignment[2].toString(), aliScore, qAligned, s11.length() };
+		Object[] res = { alignment[0].toString(), alignment[1].toString(), alignment[2].toString(), aliScore, alignedInfo, s11.length() };
 		return res;
 
 	}

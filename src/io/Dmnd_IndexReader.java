@@ -4,12 +4,15 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 
+import util.AA_Alphabet;
 import util.SparseString;
 
 public class Dmnd_IndexReader {
@@ -17,6 +20,7 @@ public class Dmnd_IndexReader {
 	private File dmndFile;
 
 	private ConcurrentHashMap<SparseString, SparseLong> giIndex;
+	private Vector<SparseString> corruptedGIs;
 	private Vector<long[]> seqLocations;
 
 	private boolean giveWarnings = false;
@@ -39,12 +43,14 @@ public class Dmnd_IndexReader {
 
 		parseSeqLocations();
 		giIndex = new ConcurrentHashMap<SparseString, SparseLong>();
-		giIndex.putAll(mapGIs());
+		corruptedGIs = new Vector<SparseString>();
+		Object[] res = mapGIs();
+		giIndex.putAll((ConcurrentHashMap<SparseString, SparseLong>) res[0]);
+		corruptedGIs.addAll((Vector<SparseString>) res[1]);
 
 		long runtime = (System.currentTimeMillis() - time) / 1000;
 		int proc = (int) Math.ceil(((double) (giIndex.keySet().size()) / (double) seqLocations.size()) * 100.);
-		System.out.println(
-				"OUTPUT>" + giIndex.keySet().size() + "/" + totalNumberOfSeqIDs + " SeqIDs mapped. [" + runtime + "s]\n");
+		System.out.println("OUTPUT>" + giIndex.keySet().size() + "/" + totalNumberOfSeqIDs + " SeqIDs mapped. [" + runtime + "s]\n");
 
 		seqLocations = null;
 
@@ -53,15 +59,19 @@ public class Dmnd_IndexReader {
 	public HashMap<SparseString, Long> getGILocations(Vector<SparseString> gIs) {
 		HashMap<SparseString, Long> gILocations = new HashMap<SparseString, Long>();
 		for (SparseString gi : gIs) {
-			if (giIndex.containsKey(gi))
+			if (giIndex.containsKey(gi) && !corruptedGIs.contains(gi))
 				gILocations.put(gi, new Long(giIndex.get(gi).getValue()));
+			if (corruptedGIs.contains(gi))
+				System.err.println("WARNING: DB-Entry ‘" + gi + "‘ occurs multiple times with different sequences!");
 		}
 		return gILocations;
 	}
 
 	public Long getGILocation(SparseString gi) {
-		if (giIndex.containsKey(gi))
+		if (giIndex.containsKey(gi) && !corruptedGIs.contains(gi))
 			return giIndex.get(gi).getValue();
+		if (corruptedGIs.contains(gi))
+			System.err.println("WARNING: DB-Entry ‘" + gi + "‘ occurs multiple times with different sequences!");
 		return null;
 	}
 
@@ -137,10 +147,13 @@ public class Dmnd_IndexReader {
 		}
 	}
 
-	private ConcurrentHashMap<SparseString, SparseLong> mapGIs() {
+	private Object[] mapGIs() {
 
 		ConcurrentHashMap<SparseString, SparseLong> giToPointer = new ConcurrentHashMap<SparseString, SparseLong>();
+		Vector<SparseString> corruptedGIs = new Vector<SparseString>();
+
 		try {
+			RandomAccessFile raf = new RandomAccessFile(dmndFile, "r");
 			InputStream is = new BufferedInputStream(new FileInputStream(dmndFile));
 			try {
 
@@ -164,6 +177,12 @@ public class Dmnd_IndexReader {
 							int val = (int) buffer.get(i);
 							if (val == 32 || val == 0) {
 								SparseString gi = new SparseString(giBuffer.toString());
+								if (giToPointer.containsKey(gi)) {
+									SparseLong p1 = giToPointer.get(gi);
+									SparseLong p2 = new SparseLong(seqLocations.get(lastK)[0]);
+									if (corrputedEntries(raf, p1, p2))
+										corruptedGIs.add(gi);
+								}
 								giToPointer.put(gi, new SparseLong(seqLocations.get(lastK)[0]));
 								giBuffer = new StringBuffer();
 								lastK++;
@@ -196,6 +215,12 @@ public class Dmnd_IndexReader {
 							if (val == 32 || val == 0) {
 								try {
 									SparseString gi = new SparseString(giBuffer.toString());
+									if (giToPointer.containsKey(gi)) {
+										SparseLong p1 = giToPointer.get(gi);
+										SparseLong p2 = new SparseLong(loc[0]);
+										if (corrputedEntries(raf, p1, p2))
+											corruptedGIs.add(gi);
+									}
 									giToPointer.put(gi, new SparseLong(loc[0]));
 									giBuffer = new StringBuffer();
 									break;
@@ -233,8 +258,42 @@ public class Dmnd_IndexReader {
 			e.printStackTrace();
 		}
 
-		return giToPointer;
+		Object[] res = { giToPointer, corruptedGIs };
+		return res;
 
+	}
+
+	private boolean corrputedEntries(RandomAccessFile raf, SparseLong p1, SparseLong p2) {
+		String s1 = getSequence(raf, p1.getValue());
+		String s2 = getSequence(raf, p2.getValue());
+		return !s1.equals(s2);
+	}
+
+	private String getSequence(RandomAccessFile raf, Long loc) {
+		String aaString = new AA_Alphabet().getAaString();
+		try {
+			if (loc != null) {
+				loc += 1;
+				raf.seek(loc);
+				ByteBuffer buffer = ByteBuffer.allocate(1024);
+				buffer.order(ByteOrder.LITTLE_ENDIAN);
+				int readChars = 0;
+				boolean doBreak = false;
+				StringBuffer aaSeq = new StringBuffer();
+				while ((readChars = raf.read(buffer.array())) != -1 && !doBreak) {
+					for (int r = 0; r < readChars; r++) {
+						int aaIndex = (int) buffer.get(r);
+						if (doBreak = (aaIndex == -1))
+							break;
+						aaSeq = aaSeq.append(aaString.charAt(aaIndex));
+					}
+				}
+				return aaSeq.toString();
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
 	}
 
 	public class SparseLong {

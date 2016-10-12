@@ -16,11 +16,11 @@ public class ScoringMatrix {
 		this.type = type;
 		this.gapOpen = gapOpen;
 		this.gapExtend = gapExtend;
-//		parseMatrix(new File("./NCBI_ScoringMatrices/" + type));
-		
-		InputStream is  = this.getClass().getResourceAsStream("/"+type);
+		// parseMatrix(new File("./NCBI_ScoringMatrices/" + type));
+
+		InputStream is = this.getClass().getResourceAsStream("/" + type);
 		parseMatrix(is);
-		
+
 	}
 
 	public int[] cmpAlignmentScores(String s1, String s2) {
@@ -44,6 +44,27 @@ public class ScoringMatrix {
 
 		}
 		return scores;
+	}
+
+	public int cmpAlignmentScore(String s1, String s2) {
+		boolean isGapOpen = false;
+		int score = 0;
+		for (int i = 0; i < s1.length(); i++) {
+			char a = s1.charAt(i);
+			char b = s2.charAt(i);
+			int s = -gapOpen - gapExtend;
+			if (a == '-' || b == '-') {
+				if (isGapOpen)
+					s = -gapExtend;
+				isGapOpen = true;
+			} else {
+				s = getScore(a, b);
+				isGapOpen = false;
+			}
+
+			score += s;
+		}
+		return score;
 	}
 
 	public int getScore(char a, char b) {

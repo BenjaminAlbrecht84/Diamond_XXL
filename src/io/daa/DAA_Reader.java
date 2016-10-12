@@ -169,6 +169,7 @@ public class DAA_Reader {
 								// initializing hit
 								Hit h = new Hit(read_num, ref_start, ref_end, bitScore, rawScore, pointer, accessPoint, query_start, ref_length,
 										query_length, subjectID);
+								h.setFrame(frame);
 
 								// storing hit
 								if (!localReadMap.containsKey(read_id))

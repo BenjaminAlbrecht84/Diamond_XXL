@@ -5,6 +5,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Vector;
 
+import util.AA_Alphabet;
 import util.CodonTranslator;
 
 public class DAA_Hit {
@@ -109,7 +110,8 @@ public class DAA_Hit {
 
 		StringBuffer[] bufs = { new StringBuffer(), new StringBuffer() };
 
-		String aaString = "ARNDCQEGHILKMFPSTWYVBJZX";
+		// String aaString = "ARNDCQEGHILKMFPSTWYVBJZX*";
+		String aaString = new AA_Alphabet().getAaString();
 		String queryDNA = getQueryDNA();
 		String queryAA = new CodonTranslator().translate(queryDNA);
 

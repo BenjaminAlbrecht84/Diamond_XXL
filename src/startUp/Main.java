@@ -30,7 +30,7 @@ public class Main {
 
 	public static void main(String[] args) {
 
-		ParseMode parseMode = Main.ParseMode.SAM;
+		ParseMode parseMode = Main.ParseMode.DAA;
 
 		// ensuring English output-style
 		Locale.setDefault(new Locale("en", "US"));
@@ -49,6 +49,7 @@ public class Main {
 		String queryName = queryFile.getName().split("\\.")[0];
 
 		// setting filters
+		boolean realign = parser.doRealign();
 		boolean useFilters = true;
 		double maxEValue = parser.getMaxSumProbability();
 		int minSumScore = parser.getMinSumScore();
@@ -105,10 +106,12 @@ public class Main {
 
 		// completing alignments
 		new Alignment_Completer().run(hitRuns, queryFile, dbFile, samFile, daaReader, matrix, dR.getLambda(), dR.getK(), cores, scorer, step,
-				samConverter, daaWriter, runWriter, maxEValue, minSumScore, minCoverage, useFilters);
+				samConverter, daaWriter, runWriter, maxEValue, minSumScore, minCoverage, useFilters, realign);
 
-		if (parseMode == ParseMode.DAA)
-			samFile.delete();
+		// deleting files
+		samFile.delete();
+		daaFile.delete();
+		shredded_query.delete();
 
 	}
 

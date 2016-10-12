@@ -3,6 +3,7 @@ package pipeline.post;
 import java.io.File;
 import java.io.RandomAccessFile;
 import java.util.BitSet;
+import java.util.HashMap;
 import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -13,6 +14,7 @@ import util.CompressAlignment;
 import util.DAACompressAlignment;
 import util.ReconstructAlignment;
 import util.ScoringMatrix;
+import util.SparseString;
 
 public class Alignment_Merger {
 
@@ -27,7 +29,8 @@ public class Alignment_Merger {
 		this.daaReader = daaReader;
 	}
 
-	public Hit mergeTwoHits(Hit h1, Hit h2, ScoringMatrix matrix, RandomAccessFile rafSAM, RandomAccessFile rafDAA) {
+	public Hit mergeTwoHits(Hit h1, Hit h2, ScoringMatrix matrix, RandomAccessFile rafSAM, RandomAccessFile rafDAA, Hit_Run run,
+			HashMap<String, String> readIDToSeq, HashMap<SparseString, String> giToSeq) {
 
 		if (h1.getRef_start() > h2.getRef_start()) {
 			Hit hMem = h1;
@@ -50,7 +53,6 @@ public class Alignment_Merger {
 		int[] scores2 = daaReader == null ? h2.getAlignmentScores(matrix, rafSAM) : h2.getAlignmentScores(matrix, rafDAA, daaReader);
 
 		int l = l2 - l1 + h1.numOfQueryInsertions(0, l2 - l1 + 1);
-		// int o = r1 - l2 + 1 + h2.numOfQueryInsertions(0, r1 - l2 + 1);
 		int o1 = r1 - l2 + 1 + h1.numOfQueryInsertions(l + 1, h1.getAliLength());
 		int o2 = r1 - l2 + 1 + h2.numOfQueryInsertions(0, r1 - l2 + 1);
 		int r = r2 - r1 + h2.numOfQueryInsertions(o2, h2.getAliLength());
@@ -70,6 +72,16 @@ public class Alignment_Merger {
 
 		for (int i = o2; i < h2.getAliLength(); i++) {
 			int index = h1.getAliLength() + i - o2;
+
+			if (index == scores.length || i == scores2.length) {
+				System.out.println("\n" + readIDToSeq.get(run.getReadID()));
+				System.out.println(giToSeq.get(run.getGi()));
+				System.out.println(run.getReadID() + " " + run.getGi());
+				System.out.println(scores.length + " " + scores2.length + " " + h2.getAliLength() + " " + i);
+				scores[index] = scores2[i];
+				System.exit(0);
+			}
+
 			scores[index] = scores2[i];
 			rawScore += scores[index];
 			query_insertions.set(index, h2.isQueryInsertion(i));
@@ -95,20 +107,6 @@ public class Alignment_Merger {
 		h.copyAliStrings(aliStrings);
 		h.setHitType(HitType.Merged);
 		h.setFrame(h1.getFrame());
-
-		Object[] alis = new ReconstructAlignment(matrix).run(mergeResult[1], mergeResult[0], mergeResult[2]);
-		String[] ali = { (String) alis[4], (String) alis[5] };
-		for (int k = 0; k < ali[0].length(); k++) {
-			char c1 = ali[0].charAt(k);
-			char c2 = ali[1].charAt(k);
-			if (c1 == '-' && c2 == '-') {
-				System.out.println(mergeResult[3] + "\n" + mergeResult[4]);
-				System.out.println(mergeResult[0]);
-				System.out.println(mergeResult[1]);
-				System.out.println(mergeResult[2]);
-				System.out.println(ali[0] + "\n" + ali[1] + "\n");
-			}
-		}
 
 		if (h1.getMetaInfo() != null) {
 			Object[] meta = new Object[3];

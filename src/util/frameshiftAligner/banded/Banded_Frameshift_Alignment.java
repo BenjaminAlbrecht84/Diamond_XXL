@@ -13,7 +13,7 @@ public class Banded_Frameshift_Alignment {
 	 */
 
 	public enum AliMode {
-		GLOBAL, FREESHIFT_LEFT, FREESHIFT_RIGHT, FREESHIFT
+		GLOBAL, FREESHIFT_LEFT, FREESHIFT_RIGHT, SEMI_GLOBAL
 	};
 
 	private ScoringMatrix scoringMatrix;
@@ -49,19 +49,19 @@ public class Banded_Frameshift_Alignment {
 		int[][] D1 = new int[n1][n2];
 		int[][] P1 = new int[n1][n2];
 		int[][] Q1 = new int[n1][n2];
-		initMatrices(D1, P1, Q1, n1, n2);
+		initMatrices(D1, P1, Q1, n1, n2, mode);
 
 		// initializing D2, Q2, P2
 		int[][] D2 = new int[n1][n2];
 		int[][] P2 = new int[n1][n2];
 		int[][] Q2 = new int[n1][n2];
-		initMatrices(D2, P2, Q2, n1, n2);
+		initMatrices(D2, P2, Q2, n1, n2, mode);
 
 		// initializing D3, Q3, P3
 		int[][] D3 = new int[n1][n2];
 		int[][] P3 = new int[n1][n2];
 		int[][] Q3 = new int[n1][n2];
-		initMatrices(D3, P3, Q3, n1, n2);
+		initMatrices(D3, P3, Q3, n1, n2, mode);
 
 		// computing diagonal
 		if (diagonal == null)
@@ -198,15 +198,31 @@ public class Banded_Frameshift_Alignment {
 
 	// assessing max cell in last column
 	private int[] getStartingCell_FreeShift(int[][] D1, int[][] D2, int[][] D3, int n1, int n2) {
-		int[] max = getMaxInColumn(D1, n2 - 1, 1, n1);
+
+		int[] maxLastColumn = getMaxInColumn(D1, n2 - 1, 1, n1);
 		for (int f = 2; f < 4; f++) {
 			int[][] D = f == 2 ? D2 : D3;
 			int[] res = getMaxInColumn(D, n2 - 1, f, n1);
-			if (res[2] > max[2])
-				max = res;
+			if (res[2] > maxLastColumn[2])
+				maxLastColumn = res;
 		}
-		int[] res = { max[0], max[1], max[3], max[2] };
-		return res;
+
+		int[] maxLastRow = getMaxInRow(D1, n1 - 1, 1, n2);
+		for (int f = 2; f < 4; f++) {
+			int[][] D = f == 2 ? D2 : D3;
+			int[] res = getMaxInRow(D, n1 - 1, f, n2);
+			if (res[2] > maxLastRow[2])
+				maxLastRow = res;
+		}
+
+		if (maxLastColumn[2] > maxLastRow[2]) {
+			int[] res = { maxLastColumn[0], maxLastColumn[1], maxLastColumn[3], maxLastColumn[2] };
+			return res;
+		} else {
+			int[] res = { maxLastRow[0], maxLastRow[1], maxLastRow[3], maxLastRow[2] };
+			return res;
+		}
+
 	}
 
 	private int[] getMaxInColumn(int[][] D, int col, int frame, int n1) {
@@ -215,6 +231,17 @@ public class Banded_Frameshift_Alignment {
 			if (D[i][col] > res[2]) {
 				res[0] = i;
 				res[2] = D[i][col];
+			}
+		}
+		return res;
+	}
+
+	private int[] getMaxInRow(int[][] D, int row, int frame, int n2) {
+		int[] res = { row, -1, Integer.MIN_VALUE, frame };
+		for (int j = 0; j < n2; j++) {
+			if (D[row][j] > res[2]) {
+				res[1] = j;
+				res[2] = D[row][j];
 			}
 		}
 		return res;
@@ -298,20 +325,20 @@ public class Banded_Frameshift_Alignment {
 	}
 
 	// standard GOTOH initialization for global alignment
-	private void initMatrices(int[][] D, int[][] P, int[][] Q, int n, int m) {
+	private void initMatrices(int[][] D, int[][] P, int[][] Q, int n, int m, AliMode mode) {
 
 		D[0][0] = 0;
 		P[0][0] = Integer.MIN_VALUE;
 		Q[0][0] = Integer.MIN_VALUE;
 
 		for (int i = 1; i < n; i++) {
-			D[i][0] = -w(i);
+			D[i][0] = mode != AliMode.SEMI_GLOBAL ? -w(i) : 0;
 			P[i][0] = Integer.MIN_VALUE;
 			Q[i][0] = Integer.MIN_VALUE;
 		}
 
 		for (int j = 1; j < m; j++) {
-			D[0][j] = -w(j);
+			D[0][j] = mode != AliMode.SEMI_GLOBAL ? -w(j) : 0;
 			P[0][j] = Integer.MIN_VALUE;
 			Q[0][j] = Integer.MIN_VALUE;
 		}

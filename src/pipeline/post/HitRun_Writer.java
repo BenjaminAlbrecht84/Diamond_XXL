@@ -33,7 +33,7 @@ public class HitRun_Writer {
 		buf = buf.append("@PG\t PN:DIAMOND_XXL\n");
 		buf = buf.append("@mm\t BlastX\n");
 		buf = buf.append("@CO\t BlastX-like alignments\n");
-		buf = buf.append("@CO\t qseqid sseqid length match mismatch gapopen gaps qstart qend slength scoverage sumscore sumprobability\n");
+		buf = buf.append("@CO\t qseqid sseqid length match mismatch gapopen gaps qstart qend sstart send scoverage frames bitScore eValue\n");
 
 		try {
 			FileWriter fW = new FileWriter(out, false);
@@ -74,8 +74,10 @@ public class HitRun_Writer {
 				buf = buf.append(aliStats[5] + "\t");
 				buf = buf.append(hFirst.getQuery_start() + "\t");
 				buf = buf.append((hLast.getQuery_start() + hLast.getQuery_length() * 3) + "\t");
-				buf = buf.append(hFirst.getRef_length() + "\t");
+				buf = buf.append(hFirst.getRef_start() + "\t");
+				buf = buf.append(hLast.getRef_end() + "\t");
 				buf = buf.append(run.getCoverge() + "\t");
+				buf = buf.append(run.getHitRun().size() + "\t");
 				buf = buf.append(run.getSumScore() + "\t");
 				buf = buf.append(dfEValue.format(run.getEValue()) + "\t");
 				buf = buf.append("\n");

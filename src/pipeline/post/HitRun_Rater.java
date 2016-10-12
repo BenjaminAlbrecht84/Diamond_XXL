@@ -29,7 +29,7 @@ public class HitRun_Rater {
 		this.readToLength = readToLength;
 	}
 
-	public Object[] run(Vector<Hit> hits, Frame_Direction dir, RandomAccessFile rafSAM, RandomAccessFile rafDAA, String readID) {
+	public Object[] run(Vector<Hit> hits, Frame_Direction dir, RandomAccessFile rafSAM, RandomAccessFile rafDAA, String readID, boolean useSumScore) {
 
 		if (hits.isEmpty()) {
 			Object[] result = { 0, 0, 0, 0, 0 };
@@ -57,8 +57,7 @@ public class HitRun_Rater {
 		// determining properties of run
 		Hit h1 = hits.get(0);
 		double hit_length = h1.getQuery_length(), sum = h1.getRawScore(), g = 0, r = 1;
-		hits.size();
-		int refCover = refCoverage(h1);
+		int refCover = refCoverage(h1), lastRefStart = h1.getRef_start();
 		for (int i = 1; i < hits.size(); i++) {
 
 			Hit h2 = hits.get(i);
@@ -69,6 +68,7 @@ public class HitRun_Rater {
 			int r2 = h2.getRef_end();
 
 			if (r1 <= l2) { // h1 and h2 are consecutive hits
+
 				refCover += refCoverage(h2);
 				hit_length += h2.getQuery_length();
 				sum += h2.getRawScore();
@@ -79,31 +79,49 @@ public class HitRun_Rater {
 				if (gapDist > 0)
 					r++;
 
+				lastRefStart = h2.getRef_start();
+
 			} else if (r1 >= l2 && r1 < r2) { // h1 and h2 overlap
 
 				precomputeAlignmentScore(h1, rafSAM, rafDAA);
 				precomputeAlignmentScore(h2, rafSAM, rafDAA);
 
 				int diff = r1 - l2;
-				// int diff = r1 - l2 + 1;
-				refCover += refCoverage(h2) - diff;
 
 				double score1 = h1.getBitScore();
 				double score2 = h2.getBitScore();
 
 				if (score1 < score2) {
-					int b = diff + h1.numOfQueryInsertions(r1 - diff, r1);
-					b = b < h1.getAlignmentScores(matrix, null).length ? b : h1.getAlignmentScores(matrix, null).length - 1;
-					hit_length += h2.getQuery_length() - b;
-					for (int j = 0; j < b; j++)
+
+					int b = diff + h1.numOfQueryInsertions(h1.getAliLength(), h1.getAliLength() - 1 - diff - 1);
+					b = b < h1.getAliLength() ? b : h1.getAliLength() - 1;
+
+					int diff1 = lastRefStart - h1.getRef_start() > 0 ? lastRefStart - h1.getRef_start() : 0;
+					int max = h1.getAliLength() - (diff1 + h1.numOfQueryInsertions(0, diff1));
+					for (int j = 0; j < Math.min(max, b); j++)
 						sum -= h1.getAlignmentScores(matrix, null)[h1.getAlignmentScores(matrix, null).length - 1 - j];
-					for (int j = 0; j < h2.getAlignmentScores(matrix, null).length; j++)
+					hit_length -= Math.min(max, b);
+
+					refCover -= Math.min(diff, h1.getAliLength() - diff1 - h1.numOfQueryInsertions(0, diff1));
+
+					int diff2 = lastRefStart - h2.getRef_start() > 0 ? lastRefStart - h2.getRef_start() : 0;
+					int start = diff2 + h2.numOfQueryInsertions(0, diff2);
+					for (int j = start; j < h2.getAliLength(); j++)
 						sum += h2.getAlignmentScores(matrix, null)[j];
+					hit_length += h2.getAliLength() - start;
+
+					refCover += refCoverage(h2) - diff2;
+
 				} else {
-					int b = diff + h2.numOfQueryInsertions(0, diff);
-					hit_length += h2.getQuery_length() - b;
-					for (int j = b; j < h2.getAlignmentScores(matrix, null).length; j++)
+
+					int b = diff + 1 + h2.numOfQueryInsertions(0, diff + 1);
+					for (int j = b; j < h2.getAliLength(); j++)
 						sum += h2.getAlignmentScores(matrix, null)[j];
+
+					lastRefStart = h2.getRef_start() + diff;
+					refCover += refCoverage(h2) - diff;
+					hit_length += h2.getQuery_length() - b;
+
 				}
 
 				h1 = h2;
@@ -117,39 +135,39 @@ public class HitRun_Rater {
 		double refLength = hits.get(0).getRef_length();
 		int coverage = (int) Math.floor(((double) refCover / refLength) * 100.);
 
-		// if (coverage < 95) {
+		if (useSumScore) {
 
-		// applying Equation 4-17/4-18 given in the Blast-Book of o'Reilly
-		int sumScore = -1;
-		double n = readToLength != null ? readToLength.get(readID) : hits.get(0).getRef_length();
-		if (g != 0)
-			sumScore = (int) Math
-					.round(lambda * sum - Math.log(k * m.doubleValue() * n) - (r - 1) * (Math.log(k) + 2 * Math.log(g)) - Math.log10(factorial(r)));
-		else
-			sumScore = (int) Math.round(lambda * sum - r * Math.log(k * m.doubleValue() * n) + Math.log(factorial(r)));
+			// applying Equation 4-17/4-18 given in the Blast-Book of o'Reilly
+			int sumScore = -1;
+			double n = readToLength != null ? readToLength.get(readID) : hits.get(0).getRef_length();
+			if (g != 0)
+				sumScore = (int) Math.round(
+						lambda * sum - Math.log(k * m.doubleValue() * n) - (r - 1) * (Math.log(k) + 2 * Math.log(g)) - Math.log10(factorial(r)));
+			else
+				sumScore = (int) Math.round(lambda * sum - r * Math.log(k * m.doubleValue() * n) + Math.log(factorial(r)));
 
-		// applying Equation 4.19-4.21 given in the Blast-Book of o'Reilly
-		double P_r = (pow(Math.E, -(double) sumScore) * pow((double) sumScore, r - 1)) / (factorial(r) * factorial(r - 1));
-		double P_r_prime = P_r / pow(beta, r - 1) * (1 - beta);
-		double eValue = (m.doubleValue() / n) * P_r_prime;
+			// applying Equation 4.19-4.21 given in the Blast-Book of o'Reilly
+			double P_r = (pow(Math.E, -(double) sumScore) * pow((double) sumScore, r - 1)) / (factorial(r) * factorial(r - 1));
+			double P_r_prime = P_r / pow(beta, r - 1) * (1 - beta);
+			double eValue = (m.doubleValue() / n) * P_r_prime;
 
-		Object[] result = { sumScore, (int) hit_length, (int) sum, refCover, eValue };
-		return result;
+			Object[] result = { sumScore, (int) hit_length, (int) sum, refCover, eValue };
+			return result;
 
-		// } else {
-		//
-		// double rawScore = sum;
-		//
-		// double sPrime = (lambda * rawScore - Math.log(k)) / Math.log(2);
-		// int bitScore = (int) Math.round(sPrime);
-		//
-		// double n = readToLength != null ? readToLength.get(readID) : hits.get(0).getRef_length();
-		// double eValue = m.doubleValue() * n * Math.pow(2, -sPrime);
-		//
-		// Object[] result = { bitScore, (int) hit_length, (int) rawScore, refCover, eValue };
-		// return result;
-		//
-		// }
+		} else {
+
+			double rawScore = sum;
+
+			double sPrime = (lambda * rawScore - Math.log(k)) / Math.log(2);
+			int bitScore = (int) Math.round(sPrime);
+
+			double n = readToLength != null ? readToLength.get(readID) : hits.get(0).getRef_length();
+			double eValue = m.doubleValue() * n * Math.pow(2, -sPrime);
+
+			Object[] result = { bitScore, (int) hit_length, (int) rawScore, refCover, eValue };
+			return result;
+
+		}
 
 	}
 

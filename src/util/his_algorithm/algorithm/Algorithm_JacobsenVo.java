@@ -85,7 +85,7 @@ public class Algorithm_JacobsenVo {
 		// return (int) Math.round(Math.log(Math.pow((double) score, (double)
 		// coverage)));
 
-		return (int) scorer.run(hic, dir, rafSAM, rafDAA, readID)[2];
+		return (int) scorer.run(hic, dir, rafSAM, rafDAA, readID, true)[2];
 	}
 
 	private void extractHitRun(SplayNode v, Vector<Hit> run, Hit[] sequence) {

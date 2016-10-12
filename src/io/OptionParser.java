@@ -11,12 +11,13 @@ public class OptionParser {
 	private int numOfThreads = Runtime.getRuntime().availableProcessors();
 	private int shredLength = 1000;
 	private int shredOverlap = 90;
+	private boolean realign = false;
 
 	// scoring & reporting options
 	private Integer delta = null;
 	private double maxSumProbability = 0.001;
 	private int minSumScore = 30;
-	private int minCoverage = 95;
+	private int minCoverage = 90;
 
 	// diamond options
 	private DiamondOptionsContainer diamondOpts = new DiamondOptionsContainer();
@@ -117,6 +118,9 @@ public class OptionParser {
 					System.err.print("ERROR: not an integer " + (args[i + 1]));
 				}
 				i++;
+				break;
+			case "--realign":
+				realign = true;
 				break;
 			case "--salltitles":
 				diamondOpts.setSalltitles(true);
@@ -309,6 +313,10 @@ public class OptionParser {
 
 	public String getDiamondOptionString() {
 		return diamondOpts.getDiamondOptionsString();
+	}
+
+	public boolean doRealign() {
+		return realign;
 	}
 
 }

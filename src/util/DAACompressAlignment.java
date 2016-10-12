@@ -9,7 +9,8 @@ public class DAACompressAlignment {
 
 	public Vector<Byte> run(String[] ali) {
 
-		String aaString = "ARNDCQEGHILKMFPSTWYVBJZX";
+//		String aaString = "ARNDCQEGHILKMFPSTWYVBJZX*";
+		String aaString = new AA_Alphabet().getAaString();
 		for (int i = 0; i < aaString.length(); i++)
 			aaToIndex.put(aaString.charAt(i), i);
 

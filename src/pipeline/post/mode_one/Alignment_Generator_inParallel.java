@@ -195,7 +195,7 @@ public class Alignment_Generator_inParallel {
 									}
 
 									// storing best result
-									Object[] res = scorer.run(his, dir, rafSAM, rafDAA, read_name);
+									Object[] res = scorer.run(his, dir, rafSAM, rafDAA, read_name, true);
 									if (!his.isEmpty() && (bestHIS == null || (int) res[2] > bestScore)) {
 										bestHIS = his;
 										bestScore = (int) res[2];
@@ -351,7 +351,7 @@ public class Alignment_Generator_inParallel {
 
 				if (hL.getRef_start() < hR.getRef_start() || hL.getQuery_length() < hR.getQuery_length()) {
 
-					Hit hM = new Alignment_Merger(scorer, sam_file, daaReader).mergeTwoHits(hL, hR, matrix, rafSAM, rafDAA);
+					Hit hM = new Alignment_Merger(scorer, sam_file, daaReader).mergeTwoHits(hL, hR, matrix, rafSAM, rafDAA, null, null, null);
 
 					int offset_R = Math.abs(hR.getId() * step);
 					int qStart_R = dir == Frame_Direction.Positiv ? hR.getQuery_start() + offset_R - 1 : length - hR.getQuery_start() - offset_R;

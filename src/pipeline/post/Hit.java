@@ -82,16 +82,27 @@ public class Hit {
 		this.ref_length = new Integer(h.getRef_length());
 		this.query_length = new Integer(h.getQuery_length());
 		this.subjectID = new Integer(h.getSubjectID());
+		this.frame = new Integer(h.getFrame());
 	}
 
 	public int numOfQueryInsertions(int l, int r) {
-		int i = l, counter = 0;
-		while (i - counter < r) {
-			if (query_insertions.get(i))
-				counter++;
-			i++;
+		if (l <= r) {
+			int i = l, counter = 0;
+			while (i - counter < r) {
+				if (query_insertions.get(i))
+					counter++;
+				i++;
+			}
+			return counter;
+		} else {
+			int i = l, counter = 0;
+			while (i + counter > r) {
+				if (query_insertions.get(i))
+					counter++;
+				i--;
+			}
+			return counter;
 		}
-		return counter;
 	}
 
 	public boolean isQueryInsertion(int pos) {
@@ -297,6 +308,10 @@ public class Hit {
 
 	public void setAlignmentStats(int[] aliStats) {
 		this.aliStats = aliStats;
+	}
+
+	public BitSet getQueryInsertions() {
+		return query_insertions;
 	}
 
 }

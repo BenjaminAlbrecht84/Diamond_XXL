@@ -18,7 +18,6 @@ import java.util.HashMap;
 import java.util.Vector;
 import java.util.concurrent.atomic.AtomicLong;
 
-import io.daa.DAA_Writer2.HitRunComparator;
 import pipeline.post.Hit;
 import pipeline.post.Hit_Run;
 import pipeline.post.mode_one.Alignment_Generator_inParallel.Frame_Direction;
