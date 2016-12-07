@@ -10,7 +10,7 @@ Download & Installation
 For running the program DIAMOND_XXL you have to perform the following two main steps:
 
 1. Download and install DIAMOND (v0.8.17 or higher); see http://github.com/bbuchfink/diamond.
-2. Get the runnable jar file ``diamond_xxl-0.8.3.jar`` from https://github.com/BenjaminAlbrecht84/Diamond_XXL/releases/download/v0.8.4/diamond_xxl.-0.8.4.jar
+2. Get the runnable jar file ``diamond_xxl-0.8.4.jar`` from https://github.com/BenjaminAlbrecht84/Diamond_XXL/releases/download/v0.8.4/diamond_xxl.-0.8.4.jar
 
 Basic command line use
 ======================
@@ -43,14 +43,14 @@ Options
 =======
 
 ============== ======= ===========
-Option        Default Description
+Option         Default Description
 ============== ======= ===========
 -exe                   Path to DIAMOND binary file.
 -d                     Path to DIAMOND database file.
 -q                     Path to query input file in FASTA or FASTQ format.
 -o                     Path to output folder.
--p            max      Number of CPU threads.
---minBitScore 30       Minimum sumScore to keep a run of matches.
+-p             max     Number of CPU threads.
+--minBitScore  30      Minimum BitScore for a reported hit. 
 --realign              Realings all alignments reported by DIAMOND.
 ============== ======= ===========
 
