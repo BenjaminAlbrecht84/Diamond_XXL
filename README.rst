@@ -10,7 +10,7 @@ Download & Installation
 For running the program DIAMOND_XXL you have to perform the following two main steps:
 
 1. Download and install DIAMOND (v0.8.17 or higher); see http://github.com/bbuchfink/diamond.
-2. Get the runnable jar file ``diamond_xxl-0.8.3.jar`` from https://github.com/BenjaminAlbrecht84/Diamond_XXL/releases/download/v0.8.3/diamond_xxl-0.8.3.jar
+2. Get the runnable jar file ``diamond_xxl-0.8.3.jar`` from https://github.com/BenjaminAlbrecht84/Diamond_XXL/releases/download/v0.8.4/diamond_xxl.-0.8.4.jar
 
 Basic command line use
 ======================
@@ -42,19 +42,18 @@ The output is automatically written into the output folder specified by the ``-a
 Options
 =======
 
-========== ======= ===========
-Option     Default Description
-========== ======= ===========
--exe               Path to DIAMOND binary file.
--d                 Path to DIAMOND database file.
--q                 Path to query input file in FASTA or FASTQ format.
--o                 Path to output folder.
--p         max     Number of CPU threads.
--l         1000    Length of the shredded reads. 
--s         30      Minimum sumScore to keep a run of matches.
--e         0.001   Maximum sumProbability to keep a run of matches. 
---realign          Realings all alignments reported by DIAMOND.
-========== ======= ===========
+============= ======= ===========
+Option        Default Description
+============= ======= ===========
+-exe                  Path to DIAMOND binary file.
+-d                    Path to DIAMOND database file.
+-q                    Path to query input file in FASTA or FASTQ format.
+-o                    Path to output folder.
+-p            max     Number of CPU threads.
+-s            10      Minimum sumScore to keep a run of matches.
+--minBitScore 30      Minimum BitScore to keep a hit.
+--realign             Realings all alignments initially computed by DIAMOND.
+============== ====== ===========
 
 Additionally, all specific DIAMOND options can be passed in for configuring the execution of DIAMOND.
 
