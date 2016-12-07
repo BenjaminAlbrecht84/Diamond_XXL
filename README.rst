@@ -52,6 +52,8 @@ Option         Default Description
 -p             max     Number of CPU threads.
 --minBitScore  30      Minimum BitScore for a reported hit. 
 --realign              Realings all alignments reported by DIAMOND.
+-c             90      Minimum percentage of the reference that has to be covered by the query.
+-m             10      Size of available main memory (in GB).
 ============== ======= ===========
 
 Additionally, all DIAMOND-specific options can be set for configuring DIAMOND.
