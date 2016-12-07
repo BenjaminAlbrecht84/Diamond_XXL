@@ -8,7 +8,6 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -23,8 +22,9 @@ public class Dmnd_IndexReader {
 	private Vector<SparseString> corruptedGIs;
 	private Vector<long[]> seqLocations;
 
+	private int counter = 0;
 	private boolean giveWarnings = false;
-	private int indexChunk = 0, totalIndexChunks = 1, totalNumberOfSeqIDs = 0;
+	private int indexChunk = 0, totalIndexChunks = 1, totalNumberOfSeqIDs = 0, multipleSeqIDs = 0;
 
 	public Dmnd_IndexReader(File dmndFile) {
 		this.dmndFile = dmndFile;
@@ -50,7 +50,11 @@ public class Dmnd_IndexReader {
 
 		long runtime = (System.currentTimeMillis() - time) / 1000;
 		int proc = (int) Math.ceil(((double) (giIndex.keySet().size()) / (double) seqLocations.size()) * 100.);
-		System.out.println("OUTPUT>" + giIndex.keySet().size() + "/" + totalNumberOfSeqIDs + " SeqIDs mapped. [" + runtime + "s]\n");
+		if (multipleSeqIDs == 0)
+			System.out.println("OUTPUT>" + giIndex.keySet().size() + "/" + totalNumberOfSeqIDs + " SeqIDs mapped. [" + runtime + "s]\n");
+		else
+			System.out.println("OUTPUT>" + giIndex.keySet().size() + "/" + totalNumberOfSeqIDs + " SeqIDs mapped (" + multipleSeqIDs
+					+ " multiple IDs). [" + runtime + "s]\n");
 
 		seqLocations = null;
 
@@ -264,6 +268,7 @@ public class Dmnd_IndexReader {
 	}
 
 	private boolean corrputedEntries(RandomAccessFile raf, SparseLong p1, SparseLong p2) {
+		multipleSeqIDs++;
 		String s1 = getSequence(raf, p1.getValue());
 		String s2 = getSequence(raf, p2.getValue());
 		return !s1.equals(s2);

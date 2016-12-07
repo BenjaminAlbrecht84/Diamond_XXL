@@ -16,8 +16,12 @@ public class OptionParser {
 	// scoring & reporting options
 	private Integer delta = null;
 	private double maxSumProbability = 0.001;
-	private int minSumScore = 30;
+	private int minSumScore = 10;
 	private int minCoverage = 90;
+	private int minBitScore = 30;
+
+	// additional options
+	private boolean reportRejInfo = false, useFilters = true;
 
 	// diamond options
 	private DiamondOptionsContainer diamondOpts = new DiamondOptionsContainer();
@@ -32,6 +36,39 @@ public class OptionParser {
 		for (int i = 0; i < args.length; i++) {
 			String option = args[i];
 			switch (option) {
+			case "-m":
+			case "--mem":
+				try {
+					double mem = Double.parseDouble(args[i + 1]);
+					diamondOpts.setBlockSize(mem / 6.);
+				} catch (Exception e) {
+					System.err.print("ERROR: not an integer " + (args[i + 1]));
+				}
+				i++;
+				break;
+			case "--minBitScore":
+				try {
+					minBitScore = Integer.parseInt(args[i + 1]);
+				} catch (Exception e) {
+					System.err.print("ERROR: not an integer " + (args[i + 1]));
+				}
+				i++;
+				break;
+			case "-c":
+			case "--minCoverage":
+				try {
+					minCoverage = Integer.parseInt(args[i + 1]);
+				} catch (Exception e) {
+					System.err.print("ERROR: not an integer " + (args[i + 1]));
+				}
+				i++;
+				break;
+			case "--noFiltering":
+				useFilters = false;
+				break;
+			case "--rejectedInfo":
+				reportRejInfo = true;
+				break;
 			case "--minSumScore":
 				try {
 					minSumScore = Integer.parseInt(args[i + 1]);
@@ -164,6 +201,7 @@ public class OptionParser {
 				i++;
 				break;
 			case "--maxtarget":
+			case "-k":
 				try {
 					diamondOpts.setMaxTargetSeqs(Integer.parseInt(args[i + 1]));
 				} catch (Exception e) {
@@ -194,6 +232,14 @@ public class OptionParser {
 			case "--queryCover":
 				try {
 					diamondOpts.setQueryCover(Integer.parseInt(args[i + 1]));
+				} catch (Exception e) {
+					System.err.print("ERROR: not an integer " + (args[i + 1]));
+				}
+				i++;
+				break;
+			case "--band":
+				try {
+					diamondOpts.setBand(Integer.parseInt(args[i + 1]));
 				} catch (Exception e) {
 					System.err.print("ERROR: not an integer " + (args[i + 1]));
 				}
@@ -317,6 +363,34 @@ public class OptionParser {
 
 	public boolean doRealign() {
 		return realign;
+	}
+
+	public boolean reportRejInfo() {
+		return reportRejInfo;
+	}
+
+	public boolean useFilters() {
+		return useFilters;
+	}
+
+	public int getMinBitScore() {
+		return minBitScore;
+	}
+
+	public double getBlockSize() {
+		return diamondOpts.getBlockSize();
+	}
+
+	public String getMatrixType() {
+		return diamondOpts.getMatrix();
+	}
+
+	public int getGapOpen() {
+		return diamondOpts.getGapOpen();
+	}
+
+	public int getGapExtend() {
+		return diamondOpts.getGapExtend();
 	}
 
 }

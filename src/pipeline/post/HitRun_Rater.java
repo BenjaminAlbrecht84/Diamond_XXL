@@ -8,6 +8,7 @@ import java.util.Vector;
 import io.daa.DAA_Reader;
 import pipeline.post.mode_one.Alignment_Generator_inParallel.Frame_Direction;
 import util.ScoringMatrix;
+import util.SparseString;
 
 public class HitRun_Rater {
 
@@ -29,7 +30,8 @@ public class HitRun_Rater {
 		this.readToLength = readToLength;
 	}
 
-	public Object[] run(Vector<Hit> hits, Frame_Direction dir, RandomAccessFile rafSAM, RandomAccessFile rafDAA, String readID, boolean useSumScore) {
+	public Object[] run(Vector<Hit> hits, Frame_Direction dir, RandomAccessFile rafSAM, RandomAccessFile rafDAA, String readID, boolean useSumScore,
+			SparseString gi, String read_name) {
 
 		if (hits.isEmpty()) {
 			Object[] result = { 0, 0, 0, 0, 0 };
@@ -73,6 +75,7 @@ public class HitRun_Rater {
 				hit_length += h2.getQuery_length();
 				sum += h2.getRawScore();
 				int gapDist = l2 - r1 - 1;
+				gapDist = gapDist < 0 ? 0 : gapDist;
 				h1 = h2;
 				g += gapDist;
 
@@ -93,14 +96,14 @@ public class HitRun_Rater {
 
 				if (score1 < score2) {
 
-					int b = diff + h1.numOfQueryInsertions(h1.getAliLength(), h1.getAliLength() - 1 - diff - 1);
-					b = b < h1.getAliLength() ? b : h1.getAliLength() - 1;
+					int b1 = diff + h1.numOfQueryInsertions(h1.getAliLength() - 1 - diff, h1.getAliLength());
+					// b1 = b1 < h1.getAliLength() ? b1 : h1.getAliLength() - 1;
 
 					int diff1 = lastRefStart - h1.getRef_start() > 0 ? lastRefStart - h1.getRef_start() : 0;
-					int max = h1.getAliLength() - (diff1 + h1.numOfQueryInsertions(0, diff1));
-					for (int j = 0; j < Math.min(max, b); j++)
+					int b2 = h1.getAliLength() - (diff1 + h1.numOfQueryInsertions(0, diff1));
+					for (int j = 0; j < Math.min(b1, b2); j++)
 						sum -= h1.getAlignmentScores(matrix, null)[h1.getAlignmentScores(matrix, null).length - 1 - j];
-					hit_length -= Math.min(max, b);
+					hit_length -= Math.min(b2, b1);
 
 					refCover -= Math.min(diff, h1.getAliLength() - diff1 - h1.numOfQueryInsertions(0, diff1));
 
@@ -140,7 +143,7 @@ public class HitRun_Rater {
 			// applying Equation 4-17/4-18 given in the Blast-Book of o'Reilly
 			int sumScore = -1;
 			double n = readToLength != null ? readToLength.get(readID) : hits.get(0).getRef_length();
-			if (g != 0)
+			if (g > 0)
 				sumScore = (int) Math.round(
 						lambda * sum - Math.log(k * m.doubleValue() * n) - (r - 1) * (Math.log(k) + 2 * Math.log(g)) - Math.log10(factorial(r)));
 			else

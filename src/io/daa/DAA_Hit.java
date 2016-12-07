@@ -5,6 +5,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Vector;
 
+import pipeline.post.mode_one.Alignment_Generator_inParallel.Frame_Direction;
 import util.AA_Alphabet;
 import util.CodonTranslator;
 

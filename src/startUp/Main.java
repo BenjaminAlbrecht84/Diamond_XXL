@@ -49,12 +49,18 @@ public class Main {
 		File outputFolder = parser.getOutputFolder();
 		String queryName = queryFile.getName().split("\\.")[0];
 
+		// for debugging
+		File rej_file_1 = parser.reportRejInfo() ? new File(outputFolder + "/RejectedByFilter1.txt") : null;
+		File rej_file_2 = parser.reportRejInfo() ? new File(outputFolder + "/RejectedByFilter2.txt") : null;
+
 		// setting filters
 		boolean realign = parser.doRealign();
-		boolean useFilters = true;
+		boolean useFilters = parser.useFilters();
 		double maxEValue = parser.getMaxSumProbability();
 		int minSumScore = parser.getMinSumScore();
+		int minBitScore = parser.getMinBitScore();
 		int minCoverage = parser.getMinCoverage();
+		double blockSize = parser.getBlockSize();
 
 		// length/step must be a multiple of 3
 		int length = adaptSize(parser.getShredLength());
@@ -84,7 +90,7 @@ public class Main {
 
 		// parsing sam file
 		daaReader = parseMode == ParseMode.DAA ? daaReader : null;
-		ScoringMatrix matrix = new ScoringMatrix(dR.getMatrixType(), dR.getGapOpen(), dR.getGapExtend());
+		ScoringMatrix matrix = new ScoringMatrix(parser.getMatrixType(), parser.getGapOpen(), parser.getGapExtend());
 		HitRun_Rater scorer = new HitRun_Rater(dR.getLambda(), dR.getK(), dbSize, daaReader, matrix, shotgun.getReadToOrigLength());
 		ConcurrentHashMap<String, ReadHits> readMap = null;
 		if (parseMode == ParseMode.SAM)
@@ -94,7 +100,7 @@ public class Main {
 
 		// merging/selecting hits
 		Vector<Hit_Run> hitRuns = new Alignment_Generator_inParallel(readMap, scorer, samFile, daaReader, matrix, maxEValue, minSumScore, useFilters,
-				step, length).run(cores);
+				step, length, rej_file_1).run(cores);
 
 		// initializing sam writer
 		File out_sam = new File(outputFolder.getAbsolutePath() + File.separator + queryName + ".sam");
@@ -109,8 +115,8 @@ public class Main {
 		HitRun_Writer runWriter = new HitRun_Writer(out_runs, samFile, daaReader, matrix);
 
 		// completing alignments
-		new Alignment_Completer().run(hitRuns, queryFile, dbFile, samFile, daaReader, matrix, dR.getLambda(), dR.getK(), cores, scorer, step,
-				samConverter, daaWriter, runWriter, maxEValue, minSumScore, minCoverage, useFilters, realign);
+		new Alignment_Completer().run(hitRuns, queryFile, dbFile, samFile, daaReader, matrix, dR.getLambda(), dR.getK(), cores, scorer, step, length,
+				samConverter, daaWriter, runWriter, maxEValue, minBitScore, minCoverage, useFilters, realign, rej_file_2, blockSize, null);
 
 		// deleting files
 		samFile.delete();

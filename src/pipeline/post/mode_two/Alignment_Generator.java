@@ -45,14 +45,14 @@ public class Alignment_Generator {
 	private DAA_Reader daaReader;
 	private double lambda, k, maxEValue;
 	private int minSumScore;
-	private int step;
+	private int step, length;
 	private HitRun_Writer hitRunWriter;
 	private HitToSamConverter samConverter;
 	private ScoringMatrix matrix;
 
 	public Alignment_Generator(ConcurrentHashMap<String, ReadHits> readMap, HitRun_Rater scorer, File queryFile, File refFile, File sam_file,
-			DAA_Reader daaReader, ScoringMatrix matrix, double lambda, double k, int step, HitRun_Writer hitRunWriter, HitToSamConverter samConverter,
-			double eValue, int minSumScore) {
+			DAA_Reader daaReader, ScoringMatrix matrix, double lambda, double k, int step, int length, HitRun_Writer hitRunWriter,
+			HitToSamConverter samConverter, double eValue, int minSumScore) {
 		this.readMap = readMap;
 		this.runRater = scorer;
 		this.queryFile = queryFile;
@@ -63,6 +63,7 @@ public class Alignment_Generator {
 		this.lambda = lambda;
 		this.k = k;
 		this.step = step;
+		this.length = length;
 		this.hitRunWriter = hitRunWriter;
 		this.samConverter = samConverter;
 		this.maxEValue = eValue;
@@ -181,12 +182,12 @@ public class Alignment_Generator {
 
 									// calculating heaviest increasing subsequence
 									Hit[] seq = generateHitSequence(allHits);
-									Vector<Hit> his = new Algorithm_JacobsenVo().run(seq, runRater, dir, rafSAM, rafDAA, read_name);
+									Vector<Hit> his = new Algorithm_JacobsenVo().run(seq, runRater, dir, rafSAM, rafDAA, gi, read_name);
 									for (Hit h : his)
 										h.setId(hitToID.get(h));
 
 									// store best HIS
-									Object[] res = runRater.run(his, dir, rafSAM, rafDAA, read_name, true);
+									Object[] res = runRater.run(his, dir, rafSAM, rafDAA, read_name, true, gi, read_name);
 									if (bestHIS == null || (int) res[2] > bestScore) {
 										bestHIS = his;
 										bestScore = (int) res[2];
@@ -333,7 +334,8 @@ public class Alignment_Generator {
 
 				if (hL.getRef_start() < hR.getRef_start() || hL.getQuery_length() < hR.getQuery_length()) {
 
-					Hit hM = new Alignment_Merger(scorer, sam_file, daaReader).mergeTwoHits(hL, hR, matrix, rafSAM, rafDAA, null, null, null);
+					Hit hM = new Alignment_Merger(scorer, sam_file, daaReader, step, length).mergeTwoHits(hL, hR, matrix, rafSAM, rafDAA, null, null,
+							null, dir);
 
 					resHits.remove(hL);
 					resHits.add(hM);

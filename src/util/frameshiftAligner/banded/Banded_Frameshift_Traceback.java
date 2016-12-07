@@ -8,6 +8,11 @@ import util.frameshiftAligner.banded.Banded_Frameshift_Alignment.AliMode;
 
 public class Banded_Frameshift_Traceback {
 
+	public enum BORDER_REACHED {
+		LEFT, RIGHT
+	}
+
+	private BORDER_REACHED borderReached;
 	private ScoringMatrix scoringMatrix;
 	private int gapOpen, gapExtend, delta;
 
@@ -34,9 +39,10 @@ public class Banded_Frameshift_Traceback {
 		frameToSequence.put(2, s12);
 		frameToSequence.put(3, s13);
 
-		StringBuffer ali1 = new StringBuffer();
-		StringBuffer ali2 = new StringBuffer();
-		StringBuffer frames = new StringBuffer();
+		int minBufLength = Math.max(s11.length(), s2.length());
+		StringBuffer ali1 = new StringBuffer(minBufLength);
+		StringBuffer ali2 = new StringBuffer(minBufLength);
+		StringBuffer frames = new StringBuffer(minBufLength);
 		StringBuffer[] alignment = { ali1, ali2, frames };
 
 		// running traceback
@@ -48,9 +54,10 @@ public class Banded_Frameshift_Traceback {
 			int i = cell[0];
 			int j = cell[1];
 
-			if (bounderies != null && (j == bounderies.get(i)[0] || j == bounderies.get(i)[1]))
+			if (bounderies != null && (j == bounderies.get(i)[0] || j == bounderies.get(i)[1])) {
+				borderReached = j == bounderies.get(i)[0] ? BORDER_REACHED.LEFT : BORDER_REACHED.RIGHT;
 				return null;
-			else if (i == 0 && j == 0)
+			} else if (i == 0 && j == 0)
 				break;
 			else if (j == 0 && mode == AliMode.SEMI_GLOBAL)
 				break;
@@ -243,15 +250,19 @@ public class Banded_Frameshift_Traceback {
 
 	}
 
+	public BORDER_REACHED getBorderReached() {
+		return borderReached;
+	}
+
 	private Object gapString(Integer l) {
-		StringBuffer buf = new StringBuffer();
+		StringBuffer buf = new StringBuffer(l);
 		for (int i = 0; i < l; i++)
 			buf.append("-");
 		return buf.toString();
 	}
 
 	private Object frameString(Integer l, int frame) {
-		StringBuffer buf = new StringBuffer();
+		StringBuffer buf = new StringBuffer(l);
 		for (int i = 0; i < l; i++)
 			buf.append(frame);
 		return buf.toString();

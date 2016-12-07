@@ -119,6 +119,16 @@ public class Hit {
 		return counter;
 	}
 
+	public int numOfQueryDeletionsFixed(int l, int r) {
+		int i = l, counter = 0;
+		while (i < r) {
+			if (query_deletions.get(i))
+				counter++;
+			i++;
+		}
+		return counter;
+	}
+
 	public boolean isQueryDeletion(int pos) {
 		return query_deletions.get(pos);
 	}
@@ -233,6 +243,10 @@ public class Hit {
 		return query_start;
 	}
 
+	public void setQuery_start(int qStart) {
+		this.query_start = qStart;
+	}
+
 	public int getQuery_length() {
 		return query_length;
 	}
@@ -246,11 +260,13 @@ public class Hit {
 	}
 
 	public void print(String prefix) {
-		System.out.println(prefix + " " + id + "\t" + ref_start + " " + ref_end + "\t" + bitScore + "\t" + query_start + " " + query_length);
+		System.out.println(prefix + " " + id + "\tQB:[" + query_start + "," + query_length + "]\tRB:[" + ref_start + "," + ref_end + "]\tRS: "
+				+ rawScore + "\tBS: " + bitScore + "\tFR: " + frame);
 	}
 
 	public String toString() {
-		return (id + "\t[" + query_start + "," + query_length + "]\t[" + ref_start + "," + ref_end + "]\t" + bitScore);
+		return (id + "\tQB:[" + query_start + "," + query_length + "]\tRB:[" + ref_start + "," + ref_end + "]\tRS: " + rawScore + "\tBS: " + bitScore
+				+ "\tFR: " + frame);
 	}
 
 	public String[] getAliStrings() {

@@ -27,18 +27,18 @@ public class Shotgun {
 		for (Read r : long_reads) {
 			String seq = r.getSeq();
 			int counter = 1;
+			Vector<Read> shortReads = new Vector<Read>();
 			for (int i = 0; i < seq.length() - length; i += step) {
 				int j = i + length < seq.length() ? i + length : seq.length();
 				String subseq = seq.substring(i, j);
 				String id = r.getId() + ":" + (counter++);
-				Read shortRead = new Read(id, subseq, "");
-				writer.write(shortRead, outFile);
+				shortReads.add(new Read(id, subseq, ""));
 			}
+			writer.write(shortReads, outFile);
 
 			int p = (int) Math.round((double) (long_reads.indexOf(r) / (double) long_reads.size()) * 100.);
 			if (p != last_p && p % 10 == 0) {
-				System.out.println("OUTPUT>" + p + "% (" + long_reads.indexOf(r) + "/" + long_reads.size()
-						+ ") of the reads shredded.");
+				System.out.println("OUTPUT>" + p + "% (" + long_reads.indexOf(r) + "/" + long_reads.size() + ") of the reads shredded.");
 				last_p = p;
 			}
 

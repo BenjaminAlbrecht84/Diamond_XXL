@@ -153,18 +153,6 @@ public class Diamond_Runner {
 		return k;
 	}
 
-	public String getMatrixType() {
-		return matrixType;
-	}
-
-	public int getGapOpen() {
-		return gapOpen;
-	}
-
-	public int getGapExtend() {
-		return gapExtend;
-	}
-
 	public File getDaaFile() {
 		return daaFile;
 	}

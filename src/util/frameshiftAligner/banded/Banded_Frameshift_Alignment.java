@@ -4,6 +4,7 @@ import java.util.Vector;
 
 import util.CodonTranslator;
 import util.ScoringMatrix;
+import util.frameshiftAligner.banded.Banded_Frameshift_Traceback.BORDER_REACHED;
 
 public class Banded_Frameshift_Alignment {
 
@@ -28,7 +29,7 @@ public class Banded_Frameshift_Alignment {
 		this.delta = delta;
 	}
 
-	public Object[] run(String s1, String s2, AliMode mode, double band) {
+	public Object[] run(String s1, String s2, AliMode mode, double bandLeft, double bandRight) {
 
 		String[] frameSeqs = cmpDiffFrameSeqs(s1);
 		String s11 = frameSeqs[0];
@@ -68,12 +69,8 @@ public class Banded_Frameshift_Alignment {
 			diagonal = cmpDiagonal(n1, n2);
 
 		// computing bandwidth
-		int d = (int) Math.floor((double) Math.max(n1, n2) * band);
-		int a = n1 < n2 ? n1 : n2;
-		int b = n2 >= n1 ? n2 : n1;
-		double frac = (1. - ((double) a / (double) b));
-		int dMin = (int) Math.floor((double) Math.max(n1, n2) * frac);
-		d += dMin;
+		int dLeft = this.computeBandwith(n1, n2, bandLeft);
+		int dRight = this.computeBandwith(n1, n2, bandRight);
 
 		// initializing diagonal pointer
 		int pointer = 0;
@@ -86,7 +83,7 @@ public class Banded_Frameshift_Alignment {
 		bounds.add(initBound);
 
 		// filling matrices
-		fillMatrices(D1, P1, Q1, D2, P2, Q2, D3, P3, Q3, mode, n1, n2, pointer, d, bounds, s11, s12, s13, s2);
+		fillMatrices(D1, P1, Q1, D2, P2, Q2, D3, P3, Q3, mode, n1, n2, pointer, dLeft, dRight, bounds, s11, s12, s13, s2);
 
 		// performing traceback
 		Banded_Frameshift_Traceback traceback = new Banded_Frameshift_Traceback(scoringMatrix, gapOpen, gapExtend, delta);
@@ -95,9 +92,12 @@ public class Banded_Frameshift_Alignment {
 
 		// returning result
 		if (alignment == null) {
-			band = 2. * band <= 1. ? 2. * band : 1.;
+			if (traceback.getBorderReached() == BORDER_REACHED.LEFT)
+				bandLeft = 2. * bandLeft <= 1. ? 2. * bandLeft : 1.;
+			if (traceback.getBorderReached() == BORDER_REACHED.RIGHT)
+				bandRight = 2. * bandRight <= 1. ? 2. * bandRight : 1.;
 			s2 = mode == AliMode.FREESHIFT_LEFT ? new StringBuffer(s2).reverse().toString() : s2;
-			return run(s1, s2, mode, band);
+			return run(s1, s2, mode, bandLeft, bandRight);
 		} else {
 			diagonal = null;
 			return alignment;
@@ -105,8 +105,18 @@ public class Banded_Frameshift_Alignment {
 
 	}
 
+	private int computeBandwith(int n1, int n2, double band) {
+		int d = (int) Math.floor((double) Math.max(n1, n2) * band);
+		int a = n1 < n2 ? n1 : n2;
+		int b = n2 >= n1 ? n2 : n1;
+		double frac = (1. - ((double) a / (double) b));
+		int dMin = (int) Math.floor((double) Math.max(n1, n2) * frac);
+		d += dMin;
+		return d;
+	}
+
 	private void fillMatrices(int[][] D1, int[][] P1, int[][] Q1, int[][] D2, int[][] P2, int[][] Q2, int[][] D3, int[][] P3, int[][] Q3,
-			AliMode mode, int n1, int n2, int pointer, int d, Vector<int[]> bounds, String s11, String s12, String s13, String s2) {
+			AliMode mode, int n1, int n2, int pointer, int dLeft, int dRight, Vector<int[]> bounds, String s11, String s12, String s13, String s2) {
 
 		for (int i = 1; i < n1; i++) {
 
@@ -115,8 +125,8 @@ public class Banded_Frameshift_Alignment {
 				pointer++;
 			Integer[] rightCell = diagonal.get(pointer - 1);
 
-			int l = leftCell[1] - d;
-			int r = mode == AliMode.GLOBAL ? rightCell[1] + d : n2;
+			int l = leftCell[1] - dLeft;
+			int r = mode == AliMode.GLOBAL ? rightCell[1] + dRight : n2;
 			int[] bound = { l, r };
 			bounds.add(bound);
 
@@ -151,15 +161,15 @@ public class Banded_Frameshift_Alignment {
 
 		// checking for staying in frame 1
 		int m1 = add(D1[i - 1][j - 1], scoringMatrix.getScore(s.charAt(i - 1), s2.charAt(j - 1)));
-		P1[i][j] = Math.max(sub(D1[i - 1][j], w(1)), sub(P1[i - 1][j], gapExtend));
-		Q1[i][j] = Math.max(sub(D1[i][j - 1], w(1)), sub(Q1[i][j - 1], gapExtend));
-		D1[i][j] = Math.max(m1, Math.max(P1[i][j], Q1[i][j]));
+		P1[i][j] = max(sub(D1[i - 1][j], w(1)), sub(P1[i - 1][j], gapExtend));
+		Q1[i][j] = max(sub(D1[i][j - 1], w(1)), sub(Q1[i][j - 1], gapExtend));
+		D1[i][j] = max(m1, Math.max(P1[i][j], Q1[i][j]));
 
 		// checking for switching from frame 2 into frame 1
 		int m2 = add(D2[i - 1][j - 1], scoringMatrix.getScore(s.charAt(i - 1), s2.charAt(j - 1)));
-		int t1 = Math.max(sub(D2[i - 1][j], w(1)), sub(P2[i - 1][j], gapExtend));
-		int t2 = Math.max(sub(D2[i][j - 1], w(1)), sub(Q2[i][j - 1], gapExtend));
-		int t3 = Math.max(m2, Math.max(t1, t2));
+		int t1 = max(sub(D2[i - 1][j], w(1)), sub(P2[i - 1][j], gapExtend));
+		int t2 = max(sub(D2[i][j - 1], w(1)), sub(Q2[i][j - 1], gapExtend));
+		int t3 = max(m2, max(t1, t2));
 		if (sub(t3, delta) > D1[i][j]) {
 			P1[i][j] = sub(t1, delta);
 			Q1[i][j] = sub(t2, delta);
@@ -168,9 +178,9 @@ public class Banded_Frameshift_Alignment {
 
 		// checking for switching from frame 3 into frame 1
 		int m3 = add(D3[i - 1][j - 1], scoringMatrix.getScore(s.charAt(i - 1), s2.charAt(j - 1)));
-		t1 = Math.max(sub(D3[i - 1][j], w(1)), sub(P3[i - 1][j], gapExtend));
-		t2 = Math.max(sub(D3[i][j - 1], w(1)), sub(Q3[i][j - 1], gapExtend));
-		t3 = Math.max(m3, Math.max(t1, t2));
+		t1 = max(sub(D3[i - 1][j], w(1)), sub(P3[i - 1][j], gapExtend));
+		t2 = max(sub(D3[i][j - 1], w(1)), sub(Q3[i][j - 1], gapExtend));
+		t3 = max(m3, max(t1, t2));
 		if (sub(t3, delta) > D1[i][j]) {
 			P1[i][j] = sub(t1, delta);
 			Q1[i][j] = sub(t2, delta);
@@ -223,6 +233,10 @@ public class Banded_Frameshift_Alignment {
 			return res;
 		}
 
+	}
+
+	private int max(int a, int b) {
+		return a > b ? a : b;
 	}
 
 	private int[] getMaxInColumn(int[][] D, int col, int frame, int n1) {

@@ -13,14 +13,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class Shotgun_inParallel {
 
+	final static boolean DO_SHREDDING = false;
+
 	private HashMap<String, Integer> readToOrigLength = new HashMap<String, Integer>();
 	private CountDownLatch latch;
 
 	private AtomicInteger shred_counter = new AtomicInteger(0);
 	private int last_p = 0, totalReads;
 
-	public File run(File fastq, File out, int length, int step, int cores) {		
-		
+	public File run(File fastq, File out, int length, int step, int cores) {
+
 		String name = fastq.getName().split("\\.")[0];
 		File outFile = new File(out.getAbsolutePath() + File.separator + name + "_" + length + "_" + step + ".fna");
 		outFile.delete();
@@ -30,7 +32,7 @@ public class Shotgun_inParallel {
 			readToOrigLength.put(r.getId(), r.getLength());
 
 		totalReads = long_reads.size();
-		
+
 		System.out.println("STEP_1>Shredding " + totalReads + " reads...");
 		long time = System.currentTimeMillis();
 
@@ -58,8 +60,8 @@ public class Shotgun_inParallel {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
-		long runtime = (System.currentTimeMillis() - time)  / 1000;
+
+		long runtime = (System.currentTimeMillis() - time) / 1000;
 		System.out.println("OUTPUT>100% (" + shred_counter + "/" + totalReads + ") of the reads shredded. [" + runtime + "s]\n");
 
 		executor.shutdown();
@@ -84,37 +86,44 @@ public class Shotgun_inParallel {
 		}
 
 		public void run() {
+			Vector<Read> readBuffer = new Vector<Read>();
 			for (Read r : long_reads) {
 				String seq = r.getSeq();
 				int counter = 0;
-				Vector<Read> readBuffer = new Vector<Read>();
+				step = DO_SHREDDING ? step : seq.length();
+				length = DO_SHREDDING ? step : seq.length();
 				for (int i = 0; i < seq.length(); i += step) {
-					
-					int j = i + length < seq.length() ? i + length : seq.length();
+					int j = i + length < seq.length() ? i + length : getTrimmedLength(seq);
 					String subseq = seq.substring(i, j);
 					String id = r.getId() + ":" + (counter++);
 					readBuffer.add(new Read(id, subseq, ""));
-					
-					if(readBuffer.size() % 1000 == 0){
-						writeReads(writer, readBuffer, outFile);
-						readBuffer = new Vector<Read>();
-					}
-					
-					if (j == seq.length())
-						break;
 				}
-				writeReads(writer, readBuffer, outFile);
+
+				if (readBuffer.size() % 100000 == 0) {
+					writeReads(writer, readBuffer, outFile);
+					readBuffer = new Vector<Read>();
+				}
+
+				// writeReads(writer, readBuffer, outFile);
 				int p = (int) Math.round(((double) shred_counter.incrementAndGet() / (double) totalReads) * 100.);
 				reportProgress(p);
 			}
+			writeReads(writer, readBuffer, outFile);
 			latch.countDown();
 		}
 
 	}
 
+	// trimming sequence in order to keep frames consistent
+	private int getTrimmedLength(String s) {
+		int end = s.length();
+		while (end % 3 != 0)
+			end--;
+		return end;
+	}
+
 	private synchronized void writeReads(Fasta_Writer writer, Vector<Read> shortReads, File outFile) {
-		for (Read r : shortReads)
-			writer.write(r, outFile);
+		writer.write(shortReads, outFile);
 	}
 
 	private synchronized void reportProgress(int p) {

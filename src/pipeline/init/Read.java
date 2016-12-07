@@ -6,9 +6,8 @@ public class Read {
 
 	public Read(String id, String seq, String qual) {
 		this.id = id;
-		this.seq = seq;
+		this.seq =seq;
 		this.qual = qual;
-//		seq = seq.replaceAll("[^AGTC]", "A");
 	}
 
 	public String getId() {

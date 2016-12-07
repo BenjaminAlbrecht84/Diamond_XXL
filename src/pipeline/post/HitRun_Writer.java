@@ -11,6 +11,7 @@ import java.util.Vector;
 
 import io.daa.DAA_Hit;
 import io.daa.DAA_Reader;
+import pipeline.post.mode_one.Alignment_Generator_inParallel.Frame_Direction;
 import util.ScoringMatrix;
 
 public class HitRun_Writer {
@@ -33,7 +34,8 @@ public class HitRun_Writer {
 		buf = buf.append("@PG\t PN:DIAMOND_XXL\n");
 		buf = buf.append("@mm\t BlastX\n");
 		buf = buf.append("@CO\t BlastX-like alignments\n");
-		buf = buf.append("@CO\t qseqid sseqid length match mismatch gapopen gaps qstart qend sstart send scoverage frames bitScore eValue\n");
+		buf = buf.append(
+				"@CO\t qseqid sseqid length matches positves mismatches gapopens gaps qstart qend sstart send scoverage frames bitScore eValue\n");
 
 		try {
 			FileWriter fW = new FileWriter(out, false);
@@ -73,7 +75,10 @@ public class HitRun_Writer {
 				buf = buf.append(aliStats[4] + "\t");
 				buf = buf.append(aliStats[5] + "\t");
 				buf = buf.append(hFirst.getQuery_start() + "\t");
-				buf = buf.append((hLast.getQuery_start() + hLast.getQuery_length() * 3) + "\t");
+				if (run.getFrameDirection() == Frame_Direction.Positiv)
+					buf = buf.append((hLast.getQuery_start() + hLast.getQuery_length() * 3 - 1) + "\t");
+				else
+					buf = buf.append((hLast.getQuery_start() - hLast.getQuery_length() * 3 + 1) + "\t");
 				buf = buf.append(hFirst.getRef_start() + "\t");
 				buf = buf.append(hLast.getRef_end() + "\t");
 				buf = buf.append(run.getCoverge() + "\t");

@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import io.SAM_Writer;
 import io.daa.DAA_Reader;
+import io.debug.RejectedWriter;
 import pipeline.post.Alignment_Merger;
 import pipeline.post.Hit;
 import pipeline.post.HitRun_Rater;
@@ -22,6 +23,7 @@ import pipeline.post.Hit_Run;
 import pipeline.post.ReadHits;
 import pipeline.post.Hit.HitType;
 import util.HitLine;
+import util.ReconstructAlignment;
 import util.SparseString;
 import util.ScoringMatrix;
 import util.his_algorithm.algorithm.Algorithm_JacobsenVo;
@@ -37,10 +39,11 @@ public class Alignment_Generator_inParallel {
 	private AtomicInteger processedReads = new AtomicInteger(0);
 	private int numOfReads, last_p = 0;
 	private SAM_Writer samWriter;
+	private RejectedWriter rejectedWriter;
 
 	private ConcurrentHashMap<String, ReadHits> readMap;
 	private HitRun_Rater scorer;
-	private File sam_file;
+	private File sam_file, rej_file_1;
 	private DAA_Reader daaReader;
 	private ScoringMatrix matrix;
 	private double maxEValue;
@@ -49,7 +52,7 @@ public class Alignment_Generator_inParallel {
 	private boolean useFilters;
 
 	public Alignment_Generator_inParallel(ConcurrentHashMap<String, ReadHits> readMap, HitRun_Rater scorer, File sam_file, DAA_Reader daaReader,
-			ScoringMatrix matrix, double maxEValue, int minSumScore, boolean useFilters, int step, int length) {
+			ScoringMatrix matrix, double maxEValue, int minSumScore, boolean useFilters, int step, int length, File rej_file_1) {
 		this.readMap = readMap;
 		this.scorer = scorer;
 		this.sam_file = sam_file;
@@ -60,12 +63,14 @@ public class Alignment_Generator_inParallel {
 		this.useFilters = useFilters;
 		this.step = step;
 		this.length = length;
+		this.rej_file_1 = rej_file_1;
 	}
 
 	public Vector<Hit_Run> run(int cores) {
 
 		Runtime.getRuntime().availableProcessors();
 
+		rejectedWriter = rej_file_1 != null ? new RejectedWriter(rej_file_1) : null;
 		samWriter = new SAM_Writer(sam_file, daaReader);
 		hitRuns = new Vector<Hit_Run>();
 		numOfReads = readMap.keySet().size();
@@ -127,6 +132,7 @@ public class Alignment_Generator_inParallel {
 		public void run() {
 
 			Vector<Hit_Run> localHitRuns = new Vector<Hit_Run>();
+			Vector<Hit_Run> rejectedHitRuns = new Vector<Hit_Run>();
 			ConcurrentLinkedQueue<Hit> mergedHits = new ConcurrentLinkedQueue<Hit>();
 
 			try {
@@ -175,27 +181,26 @@ public class Alignment_Generator_inParallel {
 
 									// computing heaviest increasing subsequence on ALL hits
 									Hit[] seq = generateHitSequence(allHits);
-									Vector<Hit> his = new Algorithm_JacobsenVo().run(seq, scorer, dir, rafSAM, rafDAA, read_name);
+									Vector<Hit> his = new Algorithm_JacobsenVo().run(seq, scorer, dir, rafSAM, rafDAA, gi, read_name);
 									for (Hit h : his)
 										h.setId(hitToID.get(h));
 
 									// filtering his after distance to diagonal line
-									if (useFilters) {
-
-										// fitting 2D line with fixed slope of 45 degrees
-										HitLine hitLine = new HitLine(step, his);
+									if (his.size() > 1 && useFilters) {
 
 										// again computing heaviest increasing subsequence on FILTERED hits
-										Vector<Hit> filteredHits = filterHits(hitLine, allHits);
+										// Vector<Hit> filteredHits = filterHits(allHits, dir, read_name, gi);
+										Vector<Hit> filteredHits = filterHits_AllPairs(allHits, dir, rafSAM, rafDAA, read_name, gi, read_name);
+
 										seq = generateHitSequence(filteredHits);
-										his = new Algorithm_JacobsenVo().run(seq, scorer, dir, rafSAM, rafDAA, read_name);
+										his = new Algorithm_JacobsenVo().run(seq, scorer, dir, rafSAM, rafDAA, gi, read_name);
 										for (Hit h : his)
 											h.setId(hitToID.get(h));
 
 									}
 
 									// storing best result
-									Object[] res = scorer.run(his, dir, rafSAM, rafDAA, read_name, true);
+									Object[] res = scorer.run(his, dir, rafSAM, rafDAA, read_name, true, gi, read_name);
 									if (!his.isEmpty() && (bestHIS == null || (int) res[2] > bestScore)) {
 										bestHIS = his;
 										bestScore = (int) res[2];
@@ -205,6 +210,7 @@ public class Alignment_Generator_inParallel {
 										bestRefLength = (int) res[3];
 										bestEValue = (double) res[4];
 										frameDir = dir;
+
 									}
 
 								}
@@ -218,7 +224,6 @@ public class Alignment_Generator_inParallel {
 								for (Hit h : bestHIS) {
 									Hit hCloned = new Hit(h);
 									if (h.getHitType() == HitType.Merged) {
-										// hCloned.setHitType(HitType.Merged);
 										hCloned.copyAliStrings(h.getAliStrings());
 										Object[] metaInfo = { read_name, gi };
 										hCloned.setMetaInfo(metaInfo);
@@ -227,11 +232,16 @@ public class Alignment_Generator_inParallel {
 									bestHISClone.add(hCloned);
 								}
 
-								if (!useFilters || (bestEValue < maxEValue && bestSumScore > minSumScore)) {
+								if (!useFilters || bestSumScore > minSumScore) {
 									Hit_Run hitRun = new Hit_Run(bestHISClone, new String(read_name), new SparseString(gi), new Integer(bestSumScore),
 											new Integer(bestLength), new Integer(bestRawScore), frameDir, new Integer(bestRefLength),
 											new Double(bestEValue));
 									localHitRuns.add(hitRun);
+								} else if (rejectedWriter != null) {
+									Hit_Run hitRun = new Hit_Run(bestHISClone, new String(read_name), new SparseString(gi), new Integer(bestSumScore),
+											new Integer(bestLength), new Integer(bestRawScore), frameDir, new Integer(bestRefLength),
+											new Double(bestEValue));
+									rejectedHitRuns.add(hitRun);
 								}
 
 							}
@@ -266,6 +276,10 @@ public class Alignment_Generator_inParallel {
 			for (Hit_Run run : localHitRuns)
 				reportLocalHitRuns(run);
 
+			// reporting rejected runs
+			if (rejectedWriter != null)
+				rejectedWriter.run(rejectedHitRuns);
+
 			// writing new hits to file
 			samWriter.run(mergedHits);
 
@@ -273,7 +287,81 @@ public class Alignment_Generator_inParallel {
 
 		}
 
-		private Vector<Hit> filterHits(HitLine hitLine, Vector<Hit> hits) {
+		private Vector<Hit> filterHits_AllPairs(Vector<Hit> hits, Frame_Direction dir, RandomAccessFile rafSAM, RandomAccessFile rafDAA,
+				String readID, SparseString gi, String read_name) {
+
+			if (hits.size() < 2)
+				return hits;
+
+			HitLine bestHitLine = null;
+			int bestScore = Integer.MIN_VALUE;
+			Vector<Hit> bestLinearHits = new Vector<Hit>();
+			for (int i = 0; i < hits.size() - 1; i++) {
+				for (int j = i + 1; j < hits.size(); j++) {
+
+					Hit h1 = hits.get(i);
+					Hit h2 = hits.get(j);
+
+					// fitting 2D line with fixed slope of 45 degrees
+					HitLine hitLine = new HitLine(step, h1, h2, dir);
+
+					// filtering method follows the alignment refinement step of GraphMap
+					// -> see GraphMap-Paper: "Fast and sensitive mapping of nanopore sequencing reads with GraphMap"
+
+					double maxDist = 0.45 * (double) hits.firstElement().getRef_length() * Math.sqrt(2.) / 2.;
+
+					double sumDist = 0, n = 0;
+					for (Hit h : hits) {
+						if (hitLine.getDistance(h, dir) <= maxDist) {
+							n++;
+							sumDist += hitLine.getDistance(h, dir);
+						}
+					}
+
+					double c = 3. * (sumDist / n);
+					Vector<Hit> filteredHits = new Vector<Hit>();
+					for (Hit h : hits) {
+						if (hitLine.getDistance(h, dir) <= c)
+							filteredHits.add(h);
+					}
+
+					if (filteredHits.isEmpty()) {
+						if (h1.getBitScore() > h2.getBitScore())
+							filteredHits.add(h1);
+						else
+							filteredHits.add(h2);
+					}
+
+					Object[] res = scorer.run(filteredHits, dir, rafSAM, rafDAA, read_name, true, gi, read_name);
+					int score = (int) res[0];
+					if (score > bestScore) {
+						bestHitLine = hitLine;
+						bestScore = score;
+						bestLinearHits = filteredHits;
+					}
+
+				}
+			}
+
+			// if (bestLinearHits.size() < hits.size()) {
+			// System.out.println(read_name + " " + gi);
+			// System.out.println(bestHitLine.getLog());
+			// System.out.println("SIZE: " + bestLinearHits.size());
+			// for (Hit h : hits)
+			// System.out.println(bestLinearHits.contains(h) + " " + h);
+			// }
+
+			return bestLinearHits;
+
+		}
+
+		private Vector<Hit> filterHits(Vector<Hit> hits, Frame_Direction dir, String read_name, SparseString gi) {
+
+			if (hits.size() < 2)
+				return hits;
+
+			// fitting 2D line with fixed slope of 45 degrees
+			HitLine hitLine = new HitLine(step, hits, dir);
 
 			// filtering method follows the alignment refinement step of GraphMap
 			// -> see GraphMap-Paper: "Fast and sensitive mapping of nanopore sequencing reads with GraphMap"
@@ -282,18 +370,26 @@ public class Alignment_Generator_inParallel {
 
 			double sumDist = 0, n = 0;
 			for (Hit h : hits) {
-				if (hitLine.getDistance(h) <= maxDist) {
+				if (hitLine.getDistance(h, dir) <= maxDist) {
 					n++;
-					sumDist += hitLine.getDistance(h);
+					sumDist += hitLine.getDistance(h, dir);
 				}
 			}
 
-			double c = 3. * (sumDist / n);
+			double c = 9. * (sumDist / n);
 			Vector<Hit> filteredHits = new Vector<Hit>();
 			for (Hit h : hits) {
-				if (hitLine.getDistance(h) <= c)
+				if (hitLine.getDistance(h, dir) <= c)
 					filteredHits.add(h);
 			}
+
+			// if (filteredHits.size() < hits.size()) {
+			// System.out.println(read_name + " " + gi);
+			// System.out.println(hitLine.getLog());
+			// System.out.println("SIZE: " + filteredHits.size());
+			// for (Hit h : hits)
+			// System.out.println(filteredHits.contains(h) + " " + h);
+			// }
 
 			return filteredHits;
 		}
@@ -349,9 +445,14 @@ public class Alignment_Generator_inParallel {
 
 			if (hL.getRef_end() >= hR.getRef_start()) {
 
-				if (hL.getRef_start() < hR.getRef_start() || hL.getQuery_length() < hR.getQuery_length()) {
+				if (hL.getRef_start() <= hR.getRef_start() || hL.getQuery_length() < hR.getQuery_length()) {
 
-					Hit hM = new Alignment_Merger(scorer, sam_file, daaReader).mergeTwoHits(hL, hR, matrix, rafSAM, rafDAA, null, null, null);
+					Hit hM = new Alignment_Merger(scorer, sam_file, daaReader, step, length).mergeTwoHits(hL, hR, matrix, rafSAM, rafDAA, null, null,
+							null, dir);
+
+					int offset_L = Math.abs(hL.getId() * step);
+					int qStart_L = dir == Frame_Direction.Positiv ? hL.getQuery_start() + offset_L - 1 : length - hL.getQuery_start() - offset_L;
+					int qEnd_L = qStart_L + hL.getQuery_length() * 3;
 
 					int offset_R = Math.abs(hR.getId() * step);
 					int qStart_R = dir == Frame_Direction.Positiv ? hR.getQuery_start() + offset_R - 1 : length - hR.getQuery_start() - offset_R;
@@ -361,9 +462,17 @@ public class Alignment_Generator_inParallel {
 					int qStart_M = dir == Frame_Direction.Positiv ? hM.getQuery_start() + offset_M - 1 : length - hM.getQuery_start() - offset_M;
 					int qEnd_M = qStart_M + hM.getQuery_length() * 3;
 
-					if (qEnd_M == qEnd_R) {
+					int qEnd = qEnd_R > qEnd_L ? qEnd_R : qEnd_L;
+					if (qEnd_M == qEnd) {
+
 						resHits.remove(hL);
 						resHits.add(hM);
+
+						// System.out.println();
+						// printHit(hL, rafSAM, rafDAA);
+						// printHit(hR, rafSAM, rafDAA);
+						// printHit(hM, rafSAM, rafDAA);
+
 					} else
 						recHits.add(hR);
 
@@ -377,6 +486,14 @@ public class Alignment_Generator_inParallel {
 			resHits.addAll(mergeOverlaps(recHits, dir, scorer, sam_file, matrix, rafSAM, rafDAA));
 
 		return resHits;
+	}
+
+	public void printHit(Hit h, RandomAccessFile rafSAM, RandomAccessFile rafDAA) {
+		h.print("");
+
+		String[] alignments = h.getAccessPoint() != null ? h.getAlignmentStrings(rafDAA, daaReader) : h.getAlignmentStrings(rafSAM);
+		Object[] ali = new ReconstructAlignment(matrix).run(alignments[1], alignments[0], alignments[2]);
+		System.out.println(ali[4] + "\n" + ali[5]);
 	}
 
 	public class Hit_Comparator implements Comparator<Hit> {

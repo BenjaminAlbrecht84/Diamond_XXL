@@ -8,6 +8,7 @@ import java.util.Vector;
 
 import io.daa.DAA_Reader;
 import pipeline.post.mode_one.Alignment_Completer.Alignment_Thread.Hit_Comparator;
+import pipeline.post.mode_one.Alignment_Generator_inParallel.Frame_Direction;
 import util.AlignmentEvaluater;
 import util.CodonTranslator;
 import util.CompressAlignment;
@@ -28,7 +29,7 @@ public class HitRun_Linearizer {
 		this.k = k;
 	}
 
-	public void run(Hit_Run run, RandomAccessFile rafSAM, RandomAccessFile rafDAA) {
+	public void run(Hit_Run run, RandomAccessFile rafSAM, RandomAccessFile rafDAA, String q) {
 
 		Vector<Hit> hits = run.getHitRun();
 
@@ -54,9 +55,6 @@ public class HitRun_Linearizer {
 			int l2 = h2.getRef_start();
 			int r1 = h1.getRef_end();
 			int r2 = h2.getRef_end();
-
-//			System.out.println(h1.getRef_start() + "," + h1.getRef_end() + " " + h2.getRef_start() + "," + h2.getRef_end() + " " + h1.getBitScore()
-//					+ " " + h2.getBitScore());
 
 			if (r1 <= l2) { // h1 and h2 are consecutive hits
 
@@ -87,21 +85,28 @@ public class HitRun_Linearizer {
 						int rawScore = matrix.cmpAlignmentScore(ali[0], ali[1]);
 						int bitScore = cmpBitScore(rawScore);
 
-						int[] aliStats = new AlignmentEvaluater().run(ali, matrix);
-						int queryLength = aliStats[aliStats.length - 1];
-						String[] aliStrings = new CompressAlignment().run(ali);
-						Vector<Byte> editOperations = new DAACompressAlignment().run(ali);
+						if (ali[0].length() > 0) {
 
-						Hit h = new Hit(h1.getId(), h1.getRef_start(), refEnd, bitScore, rawScore, h1.getFile_pointer(), h1.getAccessPoint(),
-								h1.getQuery_start(), h1.getRef_length(), queryLength, h1.getSubjectID());
-						h.setFrame(h1.getFrame());
-						h.setHitType(h1.getHitType());
-						Object[] metaInfo = { new Integer(h1.getQuery_start()), new Integer(h1.getFrame()), editOperations };
-						h.setMetaInfo(metaInfo);
-						h.copyAliStrings(aliStrings);
-						h.setAlignmentStats(aliStats);
+							int[] aliStats = new AlignmentEvaluater().run(ali, matrix);
+							int queryLength = aliStats[aliStats.length - 1];
+							String[] aliStrings = new CompressAlignment().run(ali);
+							Vector<Byte> editOperations = new DAACompressAlignment().run(ali);
 
-						linearHits.add(h);
+							Hit h = new Hit(h1.getId(), h1.getRef_start(), refEnd, bitScore, rawScore, h1.getFile_pointer(), h1.getAccessPoint(),
+									h1.getQuery_start(), h1.getRef_length(), queryLength, h1.getSubjectID());
+							h.setFrame(h1.getFrame());
+							h.setHitType(h1.getHitType());
+							Object[] metaInfo = { new Integer(h1.getQuery_start()), new Integer(h1.getFrame()), editOperations };
+							h.setMetaInfo(metaInfo);
+							h.copyAliStrings(aliStrings);
+							h.setAlignmentStats(aliStats);
+
+							// String[] aliString = this.getAlignment(h, rafSAM, rafDAA);
+							// System.out.println("1) " + h + "\n" + aliString[0] + "\n" + aliString[1]);
+
+							linearHits.add(h);
+
+						}
 
 					}
 
@@ -119,7 +124,10 @@ public class HitRun_Linearizer {
 						String[] ali2 = getAlignment(h2, rafSAM, rafDAA);
 						String[] ali = { ali2[0].substring(b), ali2[1].substring(b) };
 						int refStart = h2.getRef_start() + diff2 + 1;
-						int queryStart = h2.getQuery_start() + ((b - h2.numOfQueryDeletions(0, diff2)) * 3);
+						int queryStart = run.getFrameDirection() == Frame_Direction.Positiv
+								? h2.getQuery_start() + ((b - h2.numOfQueryDeletionsFixed(0, b)) * 3)
+								: h2.getQuery_start() - ((b - h2.numOfQueryDeletionsFixed(0, b)) * 3);
+
 						int rawScore = matrix.cmpAlignmentScore(ali[0], ali[1]);
 						int bitScore = cmpBitScore(rawScore);
 
@@ -141,6 +149,12 @@ public class HitRun_Linearizer {
 
 						h1 = h;
 
+						// System.out.println(
+						// h.getQuery_start() + " = " + h2.getQuery_start() + " + (" + b + " - " + h2.numOfQueryDeletions(0, diff2) + ")*3");
+						// System.out.println(diff2 + " = " + h1.getRef_start() + " -" + 1 + " - " + h2.getRef_start());
+						// String[] aliString = this.getAlignment(h, rafSAM, rafDAA);
+						// System.out.println("2) " + h + "\n" + aliString[0] + "\n" + aliString[1]);
+
 					}
 
 				} else {
@@ -153,48 +167,44 @@ public class HitRun_Linearizer {
 
 					String[] ali = { ali2[0].substring(b), ali2[1].substring(b) };
 					int refStart = h2.getRef_start() + diff + 1;
-					int queryStart = h2.getQuery_start() + ((b - h2.numOfQueryDeletions(0, diff)) * 3);
+					int queryStart = run.getFrameDirection() == Frame_Direction.Positiv
+							? h2.getQuery_start() + ((b - h2.numOfQueryDeletionsFixed(0, b)) * 3)
+							: h2.getQuery_start() - ((b - h2.numOfQueryDeletionsFixed(0, b)) * 3);
 					int rawScore = matrix.cmpAlignmentScore(ali[0], ali[1]);
 					int bitScore = cmpBitScore(rawScore);
 
-					int[] aliStats = new AlignmentEvaluater().run(ali, matrix);
-					int queryLength = aliStats[aliStats.length - 1];
-					String[] aliStrings = new CompressAlignment().run(ali);
-					Vector<Byte> editOperations = new DAACompressAlignment().run(ali);
+					if (ali[0].length() > 0) {
 
-					Hit h = new Hit(h2.getId(), refStart, h2.getRef_end(), bitScore, rawScore, h2.getFile_pointer(), h2.getAccessPoint(), queryStart,
-							h2.getRef_length(), queryLength, h2.getSubjectID());
-					h.setFrame(h2.getFrame());
-					h.setHitType(h2.getHitType());
-					Object[] metaInfo = { new Integer(queryStart), new Integer(h2.getFrame()), editOperations };
-					h.setMetaInfo(metaInfo);
-					h.copyAliStrings(aliStrings);
-					h.setAlignmentStats(aliStats);
+						int[] aliStats = new AlignmentEvaluater().run(ali, matrix);
+						int queryLength = aliStats[aliStats.length - 1];
+						String[] aliStrings = new CompressAlignment().run(ali);
+						Vector<Byte> editOperations = new DAACompressAlignment().run(ali);
 
-					linearHits.add(h);
+						Hit h = new Hit(h2.getId(), refStart, h2.getRef_end(), bitScore, rawScore, h2.getFile_pointer(), h2.getAccessPoint(),
+								queryStart, h2.getRef_length(), queryLength, h2.getSubjectID());
+						h.setFrame(h2.getFrame());
+						h.setHitType(h2.getHitType());
+						Object[] metaInfo = { new Integer(queryStart), new Integer(h2.getFrame()), editOperations };
+						h.setMetaInfo(metaInfo);
+						h.copyAliStrings(aliStrings);
+						h.setAlignmentStats(aliStats);
 
-					h1 = h;
+						linearHits.add(h);
+
+						h1 = h;
+
+						// System.out.println(queryStart + " = " + h2.getQuery_start() + " + (" + b + " - " + h2.numOfQueryDeletions(0, b) + ")*3");
+						// System.out.println(diff + " = " + r1 + " - " + l2);
+						// String[] aliString = this.getAlignment(h, rafSAM, rafDAA);
+						// System.out.println("3) " + h + "\n" + aliString[0] + "\n" + aliString[1]);
+
+					}
 
 				}
 
 			}
 
 		}
-
-//		String q = readIDToSeq.values().iterator().next();
-//		for (Hit h : linearHits) {
-//			int qStart;
-//			if (h.getId() != -1)
-//				qStart = h.getId() * 102 + h.getQuery_start();
-//			else
-//				qStart = h.getQuery_start();
-//			System.out.println();
-//			System.out.println(h.getRef_start() + " " + h.getRef_end() + " " + qStart + " " + h.getQuery_length() + " " + h.getFrame());
-//			System.out.println(q.substring(qStart - 1, qStart - 1 + h.getQuery_length() * 3));
-//			System.out.println(new CodonTranslator().translate(q.substring(qStart - 1, qStart - 1 + h.getQuery_length() * 3)));
-//			String ali[] = getAlignment(h, rafSAM, rafDAA);
-//			System.out.println(ali[0] + "\n" + ali[1]);
-//		}
 
 		// updating hitRun
 		Collections.sort(linearHits, new Hit_Comparator());
