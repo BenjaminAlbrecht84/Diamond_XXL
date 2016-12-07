@@ -42,16 +42,17 @@ The output is automatically written into the output folder specified by the ``-a
 Options
 =======
 
-| Options       | Default | Description                                            |
-|---------------|---------|--------------------------------------------------------|
-| -exe          |         | Path to DIAMOND binary file.                           |
-| -d            |         | Path to DIAMOND database file.                         |
-| -q            |         | Path to query input file in FASTA or FASTQ format.     |
-| -o            |         | Path to output folder.                                 |
-| -p            | max     | Number of CPU threads.                                 |
-| -s            | 10      | Minimum sumScore to keep a run of matches.             |
-| --minBitScore | 30      | Minimum BitScore to keep a hit.                        |
-| --realign     |         | Realings all alignments initially computed by DIAMOND. |
+============== ======= ===========
+Option        Default Description
+============== ======= ===========
+-exe                   Path to DIAMOND binary file.
+-d                     Path to DIAMOND database file.
+-q                     Path to query input file in FASTA or FASTQ format.
+-o                     Path to output folder.
+-p            max      Number of CPU threads.
+--minBitScore 30       Minimum sumScore to keep a run of matches.
+--realign              Realings all alignments reported by DIAMOND.
+============== ======= ===========
 
 Additionally, all DIAMOND-specific options can be set for configuring DIAMOND.
 
