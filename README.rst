@@ -42,19 +42,17 @@ The output is automatically written into the output folder specified by the ``-a
 Options
 =======
 
-============= ======= ===========
-Option        Default Description
-============= ======= ===========
--exe                  Path to DIAMOND binary file.
--d                    Path to DIAMOND database file.
--q                    Path to query input file in FASTA or FASTQ format.
--o                    Path to output folder.
--p            max     Number of CPU threads.
--s            10      Minimum sumScore to keep a run of matches.
---minBitScore 30      Minimum BitScore to keep a hit.
---realign             Realings all alignments initially computed by DIAMOND.
-============== ====== ===========
+| Options       | Default | Description                                            |
+|---------------|---------|--------------------------------------------------------|
+| -exe          |         | Path to DIAMOND binary file.                           |
+| -d            |         | Path to DIAMOND database file.                         |
+| -q            |         | Path to query input file in FASTA or FASTQ format.     |
+| -o            |         | Path to output folder.                                 |
+| -p            | max     | Number of CPU threads.                                 |
+| -s            | 10      | Minimum sumScore to keep a run of matches.             |
+| --minBitScore | 30      | Minimum BitScore to keep a hit.                        |
+| --realign     |         | Realings all alignments initially computed by DIAMOND. |
 
-Additionally, all specific DIAMOND options can be passed in for configuring the execution of DIAMOND.
+Additionally, all DIAMOND-specific options can be set for configuring DIAMOND.
 
 If no specific DIAMOND commands are defined, DIAMOND_XXL calls DIAMOND with its default parameters scoring an alignment with the *BLOSUM62* Matrix, a *gap open penalty* of 11 and a *gap extension penalty* of 1. 
