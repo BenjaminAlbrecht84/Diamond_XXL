@@ -43,7 +43,7 @@ public class DiamondOptionsContainer {
 		buf = gapOpen != 11 ? buf.append("--gapopen " + gapOpen + " ") : buf;
 		buf = gapExtend != 1 ? buf.append("--gapextend " + gapExtend + " ") : buf;
 		buf = !matrix.equals("BLOSUM62") ? buf.append("--matrix " + matrix + " ") : buf;
-		buf = !seg ? buf.append("--seq no ") : buf;
+		buf = !seg ? buf.append("--seg no ") : buf;
 		buf = maxTargetSeqs != 25 ? buf.append("--max-target-seqs " + maxTargetSeqs + " ") : buf;
 		buf = top ? buf.append("--top ") : buf;
 		buf = eValue != 0.001 ? buf.append("--evalue " + eValue + " ") : buf;

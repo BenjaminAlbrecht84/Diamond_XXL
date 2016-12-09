@@ -271,9 +271,9 @@ public class Alignment_Completer {
 									lowScoringRuns.add(run);
 								processedRuns++;
 
-//								 System.out.println("4-----------------------");
-//								 printRun(run, rafSAM, rafDAA);
-//								 checkRun(run, rafSAM, rafDAA, readIDToSeq.get(run.getReadID()));
+								// System.out.println("4-----------------------");
+								// printRun(run, rafSAM, rafDAA);
+								// checkRun(run, rafSAM, rafDAA, readIDToSeq.get(run.getReadID()));
 
 							}
 						}
@@ -342,7 +342,7 @@ public class Alignment_Completer {
 						: q1Start - h1.getQuery_length() * 3 - 1;
 				int q2Start = h2.getQuery_start();
 
-				if (h1.getFrame() == h2.getFrame() && h1.getRef_end() + 1 == h2.getRef_start() && (q1End+1) == q2Start) {
+				if (h1.getFrame() == h2.getFrame() && h1.getRef_end() + 1 == h2.getRef_start() && (q1End + 1) == q2Start) {
 
 					Hit h = new Alignment_Merger(hitRunRater, samFile, daaReader, step, length).mergeTwoHits(h1, h2, scoringMatrix, rafSAM, rafDAA,
 							run, readIDToSeq, giToSeq, run.getFrameDirection());
@@ -722,11 +722,12 @@ public class Alignment_Completer {
 					while (((readChars = raf.read(buffer.array())) != -1) && !doBreak) {
 						for (int i = 0; i < readChars; i++) {
 							char c = (char) buffer.get(i);
-							if (c == '\n') {
+							if (c == '>') {
 								doBreak = true;
 								break;
 							}
-							buf = buf.append(c);
+							if (c != '\n')
+								buf = buf.append(c);
 						}
 					}
 					String seq = buf.toString();

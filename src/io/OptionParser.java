@@ -10,7 +10,7 @@ public class OptionParser {
 	// performance options
 	private int numOfThreads = Runtime.getRuntime().availableProcessors();
 	private int shredLength = 1000;
-	private int shredOverlap = 90;
+	private int shredOverlap = 50;
 	private boolean realign = false;
 
 	// scoring & reporting options

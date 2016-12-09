@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class Shotgun_inParallel {
 
-	final static boolean DO_SHREDDING = false;
+	final static boolean DO_SHREDDING = true;
 
 	private HashMap<String, Integer> readToOrigLength = new HashMap<String, Integer>();
 	private CountDownLatch latch;
@@ -91,7 +91,7 @@ public class Shotgun_inParallel {
 				String seq = r.getSeq();
 				int counter = 0;
 				step = DO_SHREDDING ? step : seq.length();
-				length = DO_SHREDDING ? step : seq.length();
+				length = DO_SHREDDING ? length : seq.length();
 				for (int i = 0; i < seq.length(); i += step) {
 					int j = i + length < seq.length() ? i + length : getTrimmedLength(seq);
 					String subseq = seq.substring(i, j);
