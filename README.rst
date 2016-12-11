@@ -8,12 +8,17 @@
     <meta charset='utf-8'>
     
 
+<<<<<<< HEAD
     <link crossorigin="anonymous" href="https://assets-cdn.github.com/assets/frameworks-a017b78eca30a3e10114072e60d42dffa429a60d6822fd52b23d30acd8157416.css" integrity="sha256-oBe3jsowo+EBFAcuYNQt/6Qppg1oIv1Ssj0wrNgVdBY=" media="all" rel="stylesheet" />
     <link crossorigin="anonymous" href="https://assets-cdn.github.com/assets/github-99cde958c4d0bd485b300922ce312302eadff9ee85ea042dbc967b06cbd059c0.css" integrity="sha256-mc3pWMTQvUhbMAkizjEjAurf+e6F6gQtvJZ7BsvQWcA=" media="all" rel="stylesheet" />
     
     
     
     
+=======
+1. Download and install DIAMOND (v0.8.17 or higher); see http://github.com/bbuchfink/diamond.
+2. Get the runnable jar file ``diamond_xxl-0.8.4.jar`` from https://github.com/BenjaminAlbrecht84/Diamond_XXL/releases/download/v0.8.4/diamond_xxl.-0.8.4.jar
+>>>>>>> branch 'master' of https://github.com/BenjaminAlbrecht84/Diamond_XXL.git
 
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta http-equiv="Content-Language" content="en">
@@ -67,9 +72,29 @@
         <meta name="expected-hostname" content="github.com">
       <meta name="js-proxy-site-detection-payload" content="NWIxN2Q2YTkzZjEyNTAzMjViMTJiZTdiYmZmMWZmM2E2NjFiMjhjYjVkNjNkY2IzYWZjMTNhYThkYjI5MTkyNHx7InJlbW90ZV9hZGRyZXNzIjoiMTM0LjIuOS41NCIsInJlcXVlc3RfaWQiOiI4NjAyMDkzNjo2QTI3OjI4N0UwNkE6NTg0QUNBREEiLCJ0aW1lc3RhbXAiOjE0ODEyOTY2MDIsImhvc3QiOiJnaXRodWIuY29tIn0=">
 
+<<<<<<< HEAD
+=======
+============== ======= ===========
+Option         Default Description
+============== ======= ===========
+-exe                   Path to DIAMOND binary file.
+-d                     Path to DIAMOND database file.
+-q                     Path to query input file in FASTA or FASTQ format.
+-o                     Path to output folder.
+-p             max     Number of CPU threads.
+--minBitScore  30      Minimum BitScore for a reported hit. 
+--realign              Realings all alignments reported by DIAMOND.
+-c             90      Minimum percentage of the reference that has to be covered by the query.
+-m             10      Size of available main memory (in GB).
+============== ======= ===========
+>>>>>>> branch 'master' of https://github.com/BenjaminAlbrecht84/Diamond_XXL.git
 
+<<<<<<< HEAD
       <link rel="mask-icon" href="https://assets-cdn.github.com/pinned-octocat.svg" color="#000000">
       <link rel="icon" type="image/x-icon" href="https://assets-cdn.github.com/favicon.ico">
+=======
+Additionally, all DIAMOND-specific options can be set for configuring DIAMOND.
+>>>>>>> branch 'master' of https://github.com/BenjaminAlbrecht84/Diamond_XXL.git
 
     <meta name="html-safe-nonce" content="1bc1ff4b423ff40af480dc7ce063783c855ce56c">
     <meta content="699e510d00b71d3ef1ad15b6fea14918dbbfd82b" name="form-nonce" />
