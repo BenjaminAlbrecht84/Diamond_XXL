@@ -30,7 +30,7 @@ The alignment task can then be initiated by running DIMAOND_XXL like this::
 
 where the ``-exe`` option specifies the path to the DIAMOND binary file and the ``-o`` option specifies the path to the output folder. Please get sure that you have installed DIAMOND v0.8.17 or higher, otherwise the program will not be able to read the ``nr.dmnd`` file. Moreover, please do not forget to ensure that the JVM gets enough memory. 
 
-The output is automatically written into the output folder specified by the ``-a`` option. It consists of the two files ``reads.daa`` and ``reads.runs``.
+The output is automatically written into the output folder specified by the ``-o`` option. It consists of the two files ``reads.daa`` and ``reads.runs``.
 
 - The binary file ``reads.daa`` containing all matches in the typical *DAA* format. Note that this file can be converted into other formats by using DIAMOND.
 - The file ``reads.runs`` listing all runs of matches covering huge parts of protein sequences.
