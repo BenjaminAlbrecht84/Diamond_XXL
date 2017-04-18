@@ -20,8 +20,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import pipeline.post.Hit;
 import pipeline.post.Hit_Run;
 import pipeline.post.mode_one.Alignment_Generator_inParallel.Frame_Direction;
+import util.AA_Alphabet;
 
-public class DAA_Writer {
+public class DAA_Writer_Slashes {
 
 	private AtomicLong queryRecords = new AtomicLong(0), aliBlockSize = new AtomicLong(0);
 	private HashMap<Character, Integer> nucToIndex;
@@ -29,7 +30,7 @@ public class DAA_Writer {
 	private File out, samFile;
 	private DAA_Reader daaReader;
 
-	public DAA_Writer(File out, File samFile, DAA_Reader daaReader) {
+	public DAA_Writer_Slashes(File out, File samFile, DAA_Reader daaReader) {
 		this.out = out;
 		this.samFile = samFile;
 		this.daaReader = daaReader;
@@ -53,8 +54,6 @@ public class DAA_Writer {
 				buffer.order(ByteOrder.LITTLE_ENDIAN);
 				is.read(buffer.array());
 				writeInFile(buffer.array(), buffer.capacity(), false);
-
-				// System.out.println("Header: " + out.length());
 
 			} finally {
 				is.close();
@@ -118,9 +117,11 @@ public class DAA_Writer {
 
 					}
 
-					for (Hit h : run.getHitRun()) {
+					if (run.getHitRun().size() > 0) {
 
-						int subjectID = h.getSubjectID();
+						Hit firstHit = run.getHitRun().get(0);
+
+						int subjectID = firstHit.getSubjectID();
 						write(byteBuffer, readLittleEndian(subjectID));
 
 						byte typeFlags = 1 << 1;
@@ -129,17 +130,28 @@ public class DAA_Writer {
 						typeFlags |= run.getFrameDirection() == Frame_Direction.Positiv ? 0 : 1 << 6;
 						write(byteBuffer, typeFlags);
 
-						int rawScore = h.getRawScore();
+						int rawScore = 0;
+						for (Hit h : run.getHitRun())
+							rawScore += h.getRawScore();
 						write(byteBuffer, readLittleEndian(rawScore));
 
-//						int queryStart = h.getQuery_start() - 1;
-						int queryStart = h.getQuery_start();
+						// int queryStart = h.getQuery_start() - 1;
+						int queryStart = run.getHitRun().get(0).getQuery_start();
 						write(byteBuffer, readLittleEndian(queryStart));
 
-						int refStart = h.getRef_start();
+						int refStart = firstHit.getRef_start();
 						write(byteBuffer, readLittleEndian(refStart));
 
-						Vector<Byte> editOperations = (Vector<Byte>) h.getMetaInfo()[2];
+						Vector<Byte> editOperations = new Vector<Byte>();
+						for (int k = 0; k < run.getHitRun().size(); k++) {
+							Hit h1 = run.getHitRun().get(k);
+							Hit h2 = k < run.getHitRun().size() - 1 ? run.getHitRun().get(k + 1) : null;
+							editOperations.addAll((Vector<Byte>) h1.getMetaInfo()[2]);
+							Byte op = h2 != null ? getEditOperation(h1.getFrame(), h2.getFrame()) : null;
+							if (op != null)
+								editOperations.add(op);
+
+						}
 						for (byte op : editOperations)
 							write(byteBuffer, op);
 						write(byteBuffer, (byte) 0);
@@ -185,6 +197,26 @@ public class DAA_Writer {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+
+	}
+
+	private Byte getEditOperation(int f1, int f2) {
+
+		f1 = Math.abs(f1);
+		f2 = Math.abs(f2);
+		if (f2 - f1 == 1 || f2 - f1 == -2) {
+			byte op1 = 0;
+			op1 |= 3 << 6;
+			op1 |= AA_Alphabet.getIndex('/');
+			return op1;
+		}
+		if (f2 - f1 == -1 || f2 - f1 == 2) {
+			byte op2 = 0;
+			op2 |= 3 << 6;
+			op2 |= AA_Alphabet.getIndex('\\');
+			return op2;
+		}
+		return null;
 
 	}
 

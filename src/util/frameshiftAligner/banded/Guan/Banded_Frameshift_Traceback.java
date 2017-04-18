@@ -1,16 +1,18 @@
-package util.frameshiftAligner.banded;
+package util.frameshiftAligner.banded.Guan;
 
 import java.util.HashMap;
 import java.util.Vector;
 
 import util.ScoringMatrix;
-import util.frameshiftAligner.banded.Banded_Frameshift_Alignment.AliMode;
+import util.frameshiftAligner.banded.Guan.Banded_Frameshift_Alignment.AliMode;
 
 public class Banded_Frameshift_Traceback {
 
 	public enum BORDER_REACHED {
 		LEFT, RIGHT
 	}
+	
+	private int minValue = -10000;
 
 	private BORDER_REACHED borderReached;
 	private ScoringMatrix scoringMatrix;
@@ -57,7 +59,8 @@ public class Banded_Frameshift_Traceback {
 			if (bounderies != null && (j == bounderies.get(i)[0] || j == bounderies.get(i)[1])) {
 				borderReached = j == bounderies.get(i)[0] ? BORDER_REACHED.LEFT : BORDER_REACHED.RIGHT;
 				return null;
-			} else if (i == 0 && j == 0)
+			} else 
+				if (i == 0 && j == 0)
 				break;
 			else if (j == 0 && mode == AliMode.SEMI_GLOBAL)
 				break;
@@ -171,7 +174,7 @@ public class Banded_Frameshift_Traceback {
 					Vector<Integer> frames = new Vector<Integer>();
 					for (int k = j - 1; k >= 0; k--) {
 
-						if (D2[i][k] == Integer.MIN_VALUE)
+						if (D2[i][k] == minValue)
 							break;
 						if (D2[i][k] - w(j - k) - penalty == D1[i][j]) {
 							frames.add(0, frame);
@@ -207,7 +210,7 @@ public class Banded_Frameshift_Traceback {
 						score = D1[i][j];
 						frames = new Vector<Integer>();
 						for (int k = i - 1; k >= 0; k--) {
-							if (D2[k][j] == Integer.MIN_VALUE)
+							if (D2[k][j] == minValue)
 								break;
 							if (D2[k][j] - w(i - k) - penalty == D1[i][j]) {
 								frames.add(0, frame);

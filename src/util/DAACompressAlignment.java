@@ -9,7 +9,7 @@ public class DAACompressAlignment {
 
 	public Vector<Byte> run(String[] ali) {
 
-//		String aaString = "ARNDCQEGHILKMFPSTWYVBJZX*";
+		// String aaString = "ARNDCQEGHILKMFPSTWYVBJZX*";
 		String aaString = new AA_Alphabet().getAaString();
 		for (int i = 0; i < aaString.length(); i++)
 			aaToIndex.put(aaString.charAt(i), i);
@@ -46,6 +46,7 @@ public class DAACompressAlignment {
 	}
 
 	private Vector<Byte> getEditOperation(char type, int total) {
+			
 		Vector<Byte> opVec = new Vector<Byte>();
 		while (total > 0) {
 			int num = total > 63 ? 63 : total;
@@ -60,14 +61,12 @@ public class DAACompressAlignment {
 	}
 
 	private Vector<Byte> getEditOperation(char type, char c) {
+
 		byte op = 0;
 		if (type == 'D')
 			op |= 2 << 6;
 		else
 			op |= 3 << 6;
-
-		if (!aaToIndex.containsKey(c))
-			System.out.println("Error: " + c);
 
 		op |= aaToIndex.get(c);
 

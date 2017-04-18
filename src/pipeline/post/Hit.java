@@ -5,6 +5,7 @@ import java.util.BitSet;
 
 import io.daa.DAA_Hit;
 import io.daa.DAA_Reader;
+import pipeline.post.mode_one.Alignment_Generator_inParallel.Frame_Direction;
 import util.AlignmentEvaluater;
 import util.CompressAlignment;
 import util.ReconstructAlignment;
@@ -260,8 +261,9 @@ public class Hit {
 	}
 
 	public void print(String prefix) {
-		System.out.println(prefix + " " + id + "\tQB:[" + query_start + "," + query_length + "]\tRB:[" + ref_start + "," + ref_end + "]\tRS: "
-				+ rawScore + "\tBS: " + bitScore + "\tFR: " + frame);
+		int queryEnd = frame > 0 ? (query_start + 3 * query_length) : (query_start - 3 * query_length);
+		System.out.println(prefix + " " + id + "\tQB:[" + query_start + "," + queryEnd + "]\tRB:[" + ref_start + "," + ref_end
+				+ "]\tRS: " + rawScore + "\tBS: " + bitScore + "\tFR: " + frame);
 	}
 
 	public String toString() {

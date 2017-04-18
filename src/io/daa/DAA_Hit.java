@@ -80,6 +80,7 @@ public class DAA_Hit {
 		refLength = 0;
 		Vector<Integer> v = new Vector<Integer>();
 		int op = buffer.get() & 0xFF;
+		String aaString = AA_Alphabet.getAaString();
 		while (op != 0) {
 			switch (op >>> 6) {
 			case (0): // handling match
@@ -93,8 +94,15 @@ public class DAA_Hit {
 				refLength += 1;
 				break;
 			case (3): // handling substitution
-				queryLength += 3;
-				refLength += 1;
+				char c = aaString.charAt(op & 63);
+				if (c == '/')
+					queryLength -= 1;
+				else if (c == '\\')
+					queryLength += 1;
+				else {
+					queryLength += 3;
+					refLength += 1;
+				}
 				break;
 			}
 			v.add(op);
@@ -112,37 +120,50 @@ public class DAA_Hit {
 		StringBuffer[] bufs = { new StringBuffer(), new StringBuffer() };
 
 		// String aaString = "ARNDCQEGHILKMFPSTWYVBJZX*";
-		String aaString = new AA_Alphabet().getAaString();
+		String aaString = AA_Alphabet.getAaString();
 		String queryDNA = getQueryDNA();
-		String queryAA = new CodonTranslator().translate(queryDNA);
+		CodonTranslator aaTranslator = new CodonTranslator();
 
 		int q = 0;
 		for (int editOp : editOperations) {
 			switch (editOp >>> 6) {
 			case (0): // handling match
 				for (int i = 0; i < (editOp & 63); i++) {
-					bufs[0] = bufs[0].append(queryAA.charAt(q));
-					bufs[1] = bufs[1].append(queryAA.charAt(q));
-					q++;
+					char aa = aaTranslator.translateCodon(queryDNA.substring(q, q + 3));
+					bufs[0].append(aa);
+					bufs[1].append(aa);
+					q += 3;
 				}
 				break;
 			case (1): // handling insertion
 				for (int i = 0; i < (editOp & 63); i++) {
-					bufs[0] = bufs[0].append(queryAA.charAt(q));
-					bufs[1] = bufs[1].append('-');
-					q++;
+					char aa = aaTranslator.translateCodon(queryDNA.substring(q, q + 3));
+					bufs[0].append(aa);
+					bufs[1].append('-');
+					q += 3;
 				}
 				break;
 			case (2): // handling deletion
 				char c = aaString.charAt(editOp & 63);
-				bufs[0] = bufs[0].append('-');
-				bufs[1] = bufs[1].append(c);
+				bufs[0].append('-');
+				bufs[1].append(c);
 				break;
 			case (3): // handling substitution
 				c = aaString.charAt(editOp & 63);
-				bufs[0] = bufs[0].append(queryAA.charAt(q));
-				bufs[1] = bufs[1].append(c);
-				q++;
+				if (c == '/') {
+					bufs[0].append("/");
+					bufs[1].append("-");
+					q -= 1;
+				} else if (c == '\\') {
+					bufs[0].append("\\");
+					bufs[1].append("-");
+					q += 1;
+				} else {
+					char aa = aaTranslator.translateCodon(queryDNA.substring(q, q + 3));
+					bufs[0].append(aa);
+					bufs[1].append(c);
+					q += 3;
+				}
 				break;
 			}
 		}

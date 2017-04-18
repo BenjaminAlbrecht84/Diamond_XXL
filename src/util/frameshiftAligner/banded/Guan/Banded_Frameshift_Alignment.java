@@ -1,10 +1,10 @@
-package util.frameshiftAligner.banded;
+package util.frameshiftAligner.banded.Guan;
 
 import java.util.Vector;
 
 import util.CodonTranslator;
 import util.ScoringMatrix;
-import util.frameshiftAligner.banded.Banded_Frameshift_Traceback.BORDER_REACHED;
+import util.frameshiftAligner.banded.Guan.Banded_Frameshift_Traceback.BORDER_REACHED;
 
 public class Banded_Frameshift_Alignment {
 
@@ -17,10 +17,16 @@ public class Banded_Frameshift_Alignment {
 		GLOBAL, FREESHIFT_LEFT, FREESHIFT_RIGHT, SEMI_GLOBAL
 	};
 
+	private int maxValue = 10000;
+	private int minValue = -10000;
+
+	// private int maxValue = Integer.MAX_VALUE;
+	// private int minValue = Integer.MIN_VALUE;
+
 	private ScoringMatrix scoringMatrix;
 	private int gapOpen, gapExtend, delta;
 
-	private Vector<Integer[]> diagonal;
+	private Vector<int[]> diagonal;
 
 	public Banded_Frameshift_Alignment(ScoringMatrix scoringMatrix, int delta) {
 		this.scoringMatrix = scoringMatrix;
@@ -69,8 +75,8 @@ public class Banded_Frameshift_Alignment {
 			diagonal = cmpDiagonal(n1, n2);
 
 		// computing bandwidth
-		int dLeft = this.computeBandwith(n1, n2, bandLeft);
-		int dRight = this.computeBandwith(n1, n2, bandRight);
+		int dLeft = computeBandwith(n1, n2, bandLeft);
+		int dRight = computeBandwith(n1, n2, bandRight);
 
 		// initializing diagonal pointer
 		int pointer = 0;
@@ -120,10 +126,10 @@ public class Banded_Frameshift_Alignment {
 
 		for (int i = 1; i < n1; i++) {
 
-			Integer[] leftCell = diagonal.get(pointer);
+			int[] leftCell = diagonal.get(pointer);
 			while (pointer < diagonal.size() && diagonal.get(pointer)[0] == i)
 				pointer++;
-			Integer[] rightCell = diagonal.get(pointer - 1);
+			int[] rightCell = diagonal.get(pointer - 1);
 
 			int l = leftCell[1] - dLeft;
 			int r = mode == AliMode.GLOBAL ? rightCell[1] + dRight : n2;
@@ -186,7 +192,7 @@ public class Banded_Frameshift_Alignment {
 			Q1[i][j] = sub(t2, delta);
 			D1[i][j] = sub(t3, delta);
 		}
-
+		
 		int[] res = { P1[i][j], Q1[i][j], D1[i][j] };
 		return res;
 
@@ -206,7 +212,7 @@ public class Banded_Frameshift_Alignment {
 		return res;
 	}
 
-	// assessing max cell in last column
+	// assessing max cell in last column and last row
 	private int[] getStartingCell_FreeShift(int[][] D1, int[][] D2, int[][] D3, int n1, int n2) {
 
 		int[] maxLastColumn = getMaxInColumn(D1, n2 - 1, 1, n1);
@@ -240,7 +246,7 @@ public class Banded_Frameshift_Alignment {
 	}
 
 	private int[] getMaxInColumn(int[][] D, int col, int frame, int n1) {
-		int[] res = { -1, col, Integer.MIN_VALUE, frame };
+		int[] res = { -1, col, minValue, frame };
 		for (int i = 0; i < n1; i++) {
 			if (D[i][col] > res[2]) {
 				res[0] = i;
@@ -251,7 +257,7 @@ public class Banded_Frameshift_Alignment {
 	}
 
 	private int[] getMaxInRow(int[][] D, int row, int frame, int n2) {
-		int[] res = { row, -1, Integer.MIN_VALUE, frame };
+		int[] res = { row, -1, minValue, frame };
 		for (int j = 0; j < n2; j++) {
 			if (D[row][j] > res[2]) {
 				res[1] = j;
@@ -281,7 +287,7 @@ public class Banded_Frameshift_Alignment {
 	}
 
 	// computing most diagonal path
-	private Vector<Integer[]> cmpDiagonal(int n, int m) {
+	private Vector<int[]> cmpDiagonal(int n, int m) {
 
 		boolean swapped = false;
 		if (m < n) {
@@ -291,7 +297,7 @@ public class Banded_Frameshift_Alignment {
 			swapped = true;
 		}
 
-		Vector<Integer[]> diagonal = new Vector<Integer[]>();
+		Vector<int[]> diagonal = new Vector<int[]>();
 		int diff = m - n;
 		double frac = diff != 0 ? (double) n / (double) diff : 0.;
 		int k = -1;
@@ -299,11 +305,11 @@ public class Banded_Frameshift_Alignment {
 			int step = (int) Math.round(frac);
 			for (int i = 0; i < n; i++) {
 				k = k < m - 1 ? k + 1 : k;
-				Integer[] p1 = { i, k };
+				int[] p1 = { i, k };
 				diagonal.add(p1);
 				if (step != 0 && i % step == 0) {
 					k = k < m - 1 ? k + 1 : k;
-					Integer[] p2 = { i, k };
+					int[] p2 = { i, k };
 					diagonal.add(p2);
 				}
 			}
@@ -311,24 +317,24 @@ public class Banded_Frameshift_Alignment {
 			int step = (int) Math.round(1. / frac);
 			for (int i = 0; i < n; i++) {
 				k = k < m - 1 ? k + 1 : k;
-				Integer[] p1 = { i, k };
+				int[] p1 = { i, k };
 				diagonal.add(p1);
 				for (int j = 0; j < step; j++) {
 					k = k < m - 1 ? k + 1 : k;
-					Integer[] p2 = { i, k };
+					int[] p2 = { i, k };
 					diagonal.add(p2);
 				}
 			}
 		}
 		for (int j = k + 1; j < m; j++) {
-			Integer[] p = { n - 1, j };
+			int[] p = { n - 1, j };
 			diagonal.add(p);
 		}
 
 		if (swapped) {
-			Vector<Integer[]> realDiagonal = new Vector<Integer[]>();
-			for (Integer[] p : diagonal) {
-				Integer[] pPrime = { p[1], p[0] };
+			Vector<int[]> realDiagonal = new Vector<int[]>();
+			for (int[] p : diagonal) {
+				int[] pPrime = { p[1], p[0] };
 				realDiagonal.add(pPrime);
 			}
 			return realDiagonal;
@@ -342,26 +348,26 @@ public class Banded_Frameshift_Alignment {
 	private void initMatrices(int[][] D, int[][] P, int[][] Q, int n, int m, AliMode mode) {
 
 		D[0][0] = 0;
-		P[0][0] = Integer.MIN_VALUE;
-		Q[0][0] = Integer.MIN_VALUE;
+		P[0][0] = minValue;
+		Q[0][0] = minValue;
 
 		for (int i = 1; i < n; i++) {
 			D[i][0] = mode != AliMode.SEMI_GLOBAL ? -w(i) : 0;
-			P[i][0] = Integer.MIN_VALUE;
-			Q[i][0] = Integer.MIN_VALUE;
+			P[i][0] = minValue;
+			Q[i][0] = minValue;
 		}
 
 		for (int j = 1; j < m; j++) {
 			D[0][j] = mode != AliMode.SEMI_GLOBAL ? -w(j) : 0;
-			P[0][j] = Integer.MIN_VALUE;
-			Q[0][j] = Integer.MIN_VALUE;
+			P[0][j] = minValue;
+			Q[0][j] = minValue;
 		}
 
 		for (int i = 1; i < n; i++) {
 			for (int j = 1; j < m; j++) {
-				D[i][j] = Integer.MIN_VALUE;
-				P[i][j] = Integer.MIN_VALUE;
-				Q[i][j] = Integer.MIN_VALUE;
+				D[i][j] = minValue;
+				P[i][j] = minValue;
+				Q[i][j] = minValue;
 			}
 		}
 
@@ -371,9 +377,9 @@ public class Banded_Frameshift_Alignment {
 	private int add(int a, int b) {
 		int res = a + b;
 		if (b >= 0 && res < a)
-			return Integer.MAX_VALUE;
+			return maxValue;
 		if (b < 0 && res > a)
-			return Integer.MIN_VALUE;
+			return minValue;
 		return res;
 	}
 
@@ -381,9 +387,17 @@ public class Banded_Frameshift_Alignment {
 	private int sub(int a, int b) {
 		int res = a - b;
 		if (b >= 0 && res > a)
-			return Integer.MIN_VALUE;
+			return minValue;
 		if (b < 0 && res < a)
-			return Integer.MAX_VALUE;
+			return maxValue;
+		return checkRes(res);
+	}
+
+	private int checkRes(int res) {
+		if (res < minValue)
+			return res;
+		if (res > maxValue)
+			return maxValue;
 		return res;
 	}
 

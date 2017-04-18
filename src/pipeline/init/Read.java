@@ -6,7 +6,7 @@ public class Read {
 
 	public Read(String id, String seq, String qual) {
 		this.id = id;
-		this.seq =seq;
+		this.seq = seq;
 		this.qual = qual;
 	}
 
@@ -24,6 +24,18 @@ public class Read {
 
 	public int getLength() {
 		return seq.length();
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (o instanceof Read)
+			return ((Read) o).getId().equals(id);
+		return false;
+	}
+
+	@Override
+	public int hashCode() {
+		return id.hashCode();
 	}
 
 }

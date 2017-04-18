@@ -4,10 +4,12 @@ import io.Dmnd_IndexReader;
 import io.Fastq_Reader;
 import io.daa.DAA_Reader;
 import io.daa.DAA_Writer;
+import io.daa.DAA_Writer_Slashes;
 import io.debug.RejectedWriter;
 
 import java.io.File;
 import java.io.RandomAccessFile;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Collections;
@@ -34,14 +36,18 @@ import testArea.simulation.ReportAlignmentFiles;
 import util.AA_Alphabet;
 import util.AlignmentEvaluater;
 import util.CodonTranslator;
+import util.CodonTranslator_Array;
 import util.CompressAlignment;
 import util.DAACompressAlignment;
 import util.SparseString;
 import util.ReconstructAlignment;
 import util.ScoringMatrix;
-import util.frameshiftAligner.banded.Banded_Frameshift_Alignment;
+import util.frameshiftAligner.banded.Guan.Banded_Frameshift_Alignment;
+import util.frameshiftAligner.banded.Zheng.Zheng_Banded_Frameshift;
 import util.frameshiftAligner.normal.Frameshift_Alignment;
 import util.frameshiftAligner.sparse.Sparse_Frameshift_Alignment;
+import util.frameshiftAligner.xDrop.Zheng_XDrop_Frameshift;
+import util.frameshiftAligner.xDrop.Zheng_XDrop_Frameshift_Ext;
 
 public class Alignment_Completer {
 
@@ -59,6 +65,7 @@ public class Alignment_Completer {
 	private int step, length;
 	private HitToSamConverter samConverter;
 	private DAA_Writer daaWriter;
+	private DAA_Writer_Slashes daaWriterSlashes;
 	private HitRun_Writer runWriter;
 	private Vector<Hit_Run> allRuns;
 	private double maxEValue;
@@ -72,10 +79,12 @@ public class Alignment_Completer {
 	private int last_p, totalNumberOfRuns;
 	private AtomicInteger completedRuns, reportedRuns, rejectedRuns;
 
+	private long time;
+
 	public void run(Vector<Hit_Run> runs, File queryFile, File refFile, File samFile, DAA_Reader daaReader, ScoringMatrix scoringMatrix,
 			double lambda, double k, int cores, HitRun_Rater hitRunRater, int step, int length, HitToSamConverter samConverter, DAA_Writer daaWriter,
-			HitRun_Writer runWriter, double maxEValue, int minSumScore, int minCoverage, boolean useFilters, boolean realign, File rej_file_2,
-			double blockSize, ReportAlignmentFiles aliReporter) {
+			DAA_Writer_Slashes daaWriterSlashes, HitRun_Writer runWriter, double maxEValue, int minSumScore, int minCoverage, boolean useFilters,
+			boolean realign, File rej_file_2, double blockSize, ReportAlignmentFiles aliReporter) {
 
 		this.allRuns = runs;
 		this.queryFile = queryFile;
@@ -90,6 +99,7 @@ public class Alignment_Completer {
 		this.length = length;
 		this.samConverter = samConverter;
 		this.daaWriter = daaWriter;
+		this.daaWriterSlashes = daaWriterSlashes;
 		this.runWriter = runWriter;
 		this.maxEValue = maxEValue;
 		this.minBitScore = minSumScore;
@@ -123,7 +133,7 @@ public class Alignment_Completer {
 			dmndReader = new Dmnd_IndexReader(refFile, indexChunk, totalIndexChunks);
 			dmndReader.createIndex();
 
-			long time = System.currentTimeMillis();
+			time = System.currentTimeMillis();
 			System.out.println("STEP_6>Computing " + allRuns.size() + " alignment(s)...");
 
 			// sorting all hit runs decreasingly after its sum score and reference coverage
@@ -134,8 +144,19 @@ public class Alignment_Completer {
 			for (int i = 0; i < cores; i++)
 				runSubsets.add(new Vector<Hit_Run>());
 			aliThreads = new Vector<Alignment_Thread>();
-			for (int i = 0; i < allRuns.size(); i++)
-				runSubsets.get(i % cores).add(0, allRuns.get(i));
+			// for (int i = 0; i < allRuns.size(); i++) {
+			// // runSubsets.get(i % cores).add(0, allRuns.get(i));
+			// }
+			int runChunkSize = (int) Math.ceil((double) allRuns.size() / (double) cores);
+			int j = 0;
+			String lastReadID = "";
+			for (int i = 0; i < allRuns.size(); i++) {
+				String readID = allRuns.get(i).getReadID();
+				if (!runSubsets.get(j).isEmpty() && runSubsets.get(j).size() > runChunkSize && !lastReadID.equals(readID))
+					j++;
+				runSubsets.get(j).add(0, allRuns.get(i));
+				lastReadID = readID;
+			}
 			for (int i = 0; i < cores; i++)
 				aliThreads.add(new Alignment_Thread(runSubsets.get(i)));
 
@@ -165,6 +186,8 @@ public class Alignment_Completer {
 
 		if (daaWriter != null)
 			daaWriter.finish();
+		if (daaWriterSlashes != null)
+			daaWriterSlashes.finish();
 
 	}
 
@@ -173,6 +196,8 @@ public class Alignment_Completer {
 		// writing all hits in DAA file
 		if (daaWriter != null)
 			daaWriter.run(runs, readIDToSeq);
+		if (daaWriterSlashes != null)
+			daaWriterSlashes.run(runs, readIDToSeq);
 
 		// writing runs
 		runWriter.run(runs);
@@ -183,11 +208,11 @@ public class Alignment_Completer {
 	}
 
 	private void reportProgess(int processedRuns) {
+		long runtime = (System.currentTimeMillis() - time) / 1000;
 		int p = (int) Math.round(((double) completedRuns.addAndGet(processedRuns) / (double) totalNumberOfRuns) * 100.);
 		p = ((int) Math.floor((double) p / 1.)) * 1;
 		if (p != 100 && p != last_p && p % 1 == 0) {
-			System.out.println(
-					"OUTPUT>" + p + "% (" + completedRuns.get() + "/" + totalNumberOfRuns + ") of the most promising alignments computed...");
+			System.out.println("OUTPUT>" + p + "% (" + completedRuns.get() + "/" + totalNumberOfRuns + ") alignments computed... [" + runtime + "s]");
 			last_p = p;
 		}
 	}
@@ -195,6 +220,7 @@ public class Alignment_Completer {
 	public class Alignment_Thread implements Runnable {
 
 		private Vector<Hit_Run> runs;
+		private ConcurrentHashMap<Integer, Long> lengthToRuntime = new ConcurrentHashMap<Integer, Long>();
 
 		public Alignment_Thread(Vector<Hit_Run> runs) {
 			this.runs = runs;
@@ -248,12 +274,12 @@ public class Alignment_Completer {
 							Hit_Run run = subset.get(j);
 							if (giToSeq.containsKey(run.getGi())) {
 
-								// System.out.println("1-----------------------");
+								// System.out.println("\n1-----------------------");
 								// printRun(run, rafSAM, rafDAA);
 
 								closeAliGaps(run, giToSeq, readIDToSeq, rafSAM, rafDAA, true);
 
-								// System.out.println("2-----------------------");
+								// System.out.println("\n2-----------------------");
 								// printRun(run, rafSAM, rafDAA);
 								// checkRun(run, rafSAM, rafDAA, readIDToSeq.get(run.getReadID()));
 
@@ -273,20 +299,27 @@ public class Alignment_Completer {
 
 								// System.out.println("4-----------------------");
 								// printRun(run, rafSAM, rafDAA);
+								// setRunHitInfo(run, rafSAM, rafDAA);
 								// checkRun(run, rafSAM, rafDAA, readIDToSeq.get(run.getReadID()));
 
 							}
 						}
 
+						// for (int key : lengthToRuntime.keySet())
+						// System.out.println(key + " -> " + lengthToRuntime.get(key));
+						// lengthToRuntime.clear();
+						// System.out.println(highScoringRuns.size() + " vs " + lowScoringRuns.size());
+
 						// reporting processed runs
+						setAllHitInfo(highScoringRuns, rafSAM, rafDAA);
 						reportCompletedRuns(highScoringRuns, readIDToSeq);
 						reportProgess(processedRuns);
-						if (aliReporter != null)
-							aliReporter.run(highScoringRuns, rafSAM, rafDAA, readIDToSeq);
+						// if (aliReporter != null)
+						// aliReporter.run(highScoringRuns, rafSAM, rafDAA, readIDToSeq);
 
 						// reporting rejected runs
-						if (rejectedWriter != null)
-							rejectedWriter.run(lowScoringRuns);
+						// if (rejectedWriter != null)
+						// rejectedWriter.run(lowScoringRuns);
 						rejectedRuns.addAndGet(lowScoringRuns.size());
 						lowScoringRuns.clear();
 
@@ -329,6 +362,38 @@ public class Alignment_Completer {
 
 		}
 
+		private void setAllHitInfo(Vector<Hit_Run> highScoringRuns, RandomAccessFile rafSAM, RandomAccessFile rafDAA) {
+			for (Hit_Run run : highScoringRuns) {
+				for (Hit h : run.getHitRun())
+					setHitInfo(h, rafSAM, rafDAA);
+			}
+		}
+
+		private void setRunHitInfo(Hit_Run run, RandomAccessFile rafSAM, RandomAccessFile rafDAA) {
+			for (Hit h : run.getHitRun())
+				setHitInfo(h, rafSAM, rafDAA);
+		}
+
+		private void setHitInfo(Hit h, RandomAccessFile rafSAM, RandomAccessFile rafDAA) {
+			if (h.getMetaInfo() == null) {
+				String[] ali = getAlignment(h, rafSAM, rafDAA);
+				String[] aliStrings = new CompressAlignment().run(ali);
+				int[] aliStats = new AlignmentEvaluater().run(ali, scoringMatrix);
+				Vector<Byte> editOperations = new DAACompressAlignment().run(ali);
+				Object[] metaInfo = { h.getQuery_start(), h.getFrame(), editOperations };
+				h.setMetaInfo(metaInfo);
+				h.copyAliStrings(aliStrings);
+				h.setAlignmentStats(aliStats);
+			}
+		}
+
+		private String[] getAlignment(Hit h, RandomAccessFile rafSAM, RandomAccessFile rafDAA) {
+			String[] aliStrings1 = h.getAccessPoint() != null ? h.getAlignmentStrings(rafDAA, daaReader) : h.getAlignmentStrings(rafSAM);
+			Object[] res = new ReconstructAlignment(scoringMatrix).run(aliStrings1[1], aliStrings1[0], aliStrings1[2]);
+			String[] ali = { (String) res[4], (String) res[5] };
+			return ali;
+		}
+
 		private void mergeAlignments(Hit_Run run, RandomAccessFile rafSAM, RandomAccessFile rafDAA, HashMap<String, String> readIDToSeq,
 				HashMap<SparseString, String> giToSeq) {
 			// Hit h1 = run.getHitRun().get(0);
@@ -342,8 +407,10 @@ public class Alignment_Completer {
 						: q1Start - h1.getQuery_length() * 3 - 1;
 				int q2Start = h2.getQuery_start();
 
-				if (h1.getFrame() == h2.getFrame() && h1.getRef_end() + 1 == h2.getRef_start() && (q1End + 1) == q2Start) {
+				if (h1.getFrame() == h2.getFrame() && h1.getRef_end() + 1 == h2.getRef_start() && q1End == q2Start) {
 
+					setHitInfo(h1, rafSAM, rafDAA);
+					setHitInfo(h2, rafSAM, rafDAA);
 					Hit h = new Alignment_Merger(hitRunRater, samFile, daaReader, step, length).mergeTwoHits(h1, h2, scoringMatrix, rafSAM, rafDAA,
 							run, readIDToSeq, giToSeq, run.getFrameDirection());
 
@@ -402,6 +469,8 @@ public class Alignment_Completer {
 		private void closeAliGaps(Hit_Run run, HashMap<SparseString, String> giToSeq, HashMap<String, String> readIDToSeq, RandomAccessFile rafSAM,
 				RandomAccessFile rafDAA, boolean firstRun) {
 
+			double bL = 0.01, bR = 0.01;
+			int xDrop = 18;
 			Vector<Vector<Hit>> closingHits = new Vector<Vector<Hit>>();
 
 			// loading query and reference sequences
@@ -426,13 +495,21 @@ public class Alignment_Completer {
 
 			int queryGapLength = queryGapEnd - queryGapStart + 1;
 			int refGapLength = (refGapEnd - refGapStart + 1) * 3;
+			int exp_queryGap_length = (int) Math.round(new Double(refGapLength) * 0.97);
+			int exp_refGap_length = (int) Math.round(new Double(queryGapLength) * 1.03);
 
-			int queryGapStartOffset = 0;
-			if (2 * refGapLength < queryGapLength) {
-				queryGapStartOffset = queryGapEnd - refGapLength;
-				queryGapStart = queryGapEnd - refGapLength;
+			int queryGapStartOffset = 0, refGapOffset = 0;
+			// if (2 * refGapLength < queryGapLength) {
+			// queryGapStartOffset = queryGapEnd - refGapLength;
+			// queryGapStart = queryGapEnd - refGapLength;
+			// }
+			if (queryGapLength > exp_queryGap_length) {
+				queryGapStartOffset = queryGapEnd - exp_queryGap_length;
+				queryGapStart = queryGapEnd - exp_queryGap_length;
+			} else if (refGapLength > exp_refGap_length) {
+				refGapOffset = refGapEnd - (exp_refGap_length / 3);
+				refGapStart = refGapEnd - (exp_refGap_length / 3);
 			}
-			// queryGapStart = 2 * refGapLength < queryGapLength ? queryGapEnd - refGapLength : queryGapStart;
 
 			Vector<Hit> closingFrameHits = null;
 			if (refGapStart < refGapEnd && queryGapStart < queryGapEnd - 4) {
@@ -440,14 +517,31 @@ public class Alignment_Completer {
 				String subQuery = query.substring(queryGapStart, queryGapEnd + 3);
 				String subRef = ref.substring(refGapStart, refGapEnd);
 
-				Object[] aliResult = new Banded_Frameshift_Alignment(scoringMatrix, scoringMatrix.getGapOpen()).run(subQuery, subRef,
-						Banded_Frameshift_Alignment.AliMode.FREESHIFT_LEFT, 0.1, 0.1);
-				// Object[] aliResult = new Frameshift_Alignment(scoringMatrix, 2 * scoringMatrix.getGapOpen()).run(subQuery, subRef,
-				// Frameshift_Alignment.AliMode.FREESHIFT_LEFT);
-				queryGapStart = ((int) (aliResult[5]) * 3) - (((int[]) aliResult[4])[0] * 3) + queryGapStartOffset;
-				refGapStart = subRef.length() - ((int[]) aliResult[4])[1];
+				// Object[] aliResult = new Banded_Frameshift_Alignment(scoringMatrix, scoringMatrix.getGapOpen()).run(subQuery, subRef,
+				// Banded_Frameshift_Alignment.AliMode.GLOBAL, bL, bR);
+				// queryGapStart = ((int) (aliResult[5]) * 3) - (((int[]) aliResult[4])[0] * 3) + queryGapStartOffset;
+				// refGapStart = subRef.length() - ((int[]) aliResult[4])[1];
 
-				closingFrameHits = generateFrameHits(aliResult, queryGapStart + 1, refGapStart + 1, h, run.getFrameDirection(), query.length(), run);
+				long time = System.currentTimeMillis();
+				// Object[] aliResult = new Banded_Frameshift_Alignment(scoringMatrix, scoringMatrix.getGapOpen()).run(subQuery, subRef,
+				// Banded_Frameshift_Alignment.AliMode.GLOBAL, bL, bR);
+				// Object[] aliResult = new Zheng_Banded_Frameshift(scoringMatrix, scoringMatrix.getGapOpen()).run(subQuery, subRef,
+				// Zheng_Banded_Frameshift.AliMode.GLOBAL, bL, bR);
+				// Object[] aliResult = new Zheng_XDrop_Frameshift(scoringMatrix, scoringMatrix.getGapOpen()).run(subQuery, subRef,
+				// Zheng_XDrop_Frameshift.AliMode.RIGHT, 15, 30);
+				// queryGapStart = queryGapStartOffset;
+				Object[] aliResult = new Zheng_XDrop_Frameshift(scoringMatrix, scoringMatrix.getGapOpen()).run(subQuery, subRef,
+						Zheng_XDrop_Frameshift.AliMode.LEFT, xDrop, 30);
+				queryGapStart = (int) (aliResult[4]) * 3 + queryGapStartOffset;
+				// Object[] aliResult = new Zheng_XDrop_Frameshift_Ext(scoringMatrix, scoringMatrix.getGapOpen()).run(subQuery, subRef,
+				// Zheng_XDrop_Frameshift_Ext.AliMode.LEFT, 15);
+				// queryGapStart = (int) (aliResult[4]) * 3 + queryGapStartOffset;
+				refGapStart = ((int) aliResult[5]) + refGapOffset;
+				long runtime = System.currentTimeMillis() - time;
+				// processRuntimeInfo(aliResult, runtime);
+
+				closingFrameHits = generateFrameHits(aliResult, queryGapStart + 1, refGapStart + 1, h, run.getFrameDirection(), query.length(), run,
+						true, false);
 			}
 			closingHits.add(closingFrameHits);
 
@@ -466,12 +560,17 @@ public class Alignment_Completer {
 					if (refGapStart < refGapEnd && queryGapStart < queryGapEnd - 4) {
 						String subQuery = query.substring(queryGapStart, queryGapEnd);
 						String subRef = ref.substring(refGapStart, refGapEnd);
-						Object[] aliResult = new Banded_Frameshift_Alignment(scoringMatrix, scoringMatrix.getGapOpen()).run(subQuery, subRef,
-								Banded_Frameshift_Alignment.AliMode.GLOBAL, 0.1, 0.1);
-						// Object[] aliResult = new Frameshift_Alignment(scoringMatrix, 2 * scoringMatrix.getGapOpen()).run(subQuery, subRef,
-						// Frameshift_Alignment.AliMode.GLOBAL);
+
+						long time = System.currentTimeMillis();
+						// Object[] aliResult = new Banded_Frameshift_Alignment(scoringMatrix, scoringMatrix.getGapOpen()).run(subQuery, subRef,
+						// Banded_Frameshift_Alignment.AliMode.GLOBAL, bL, bR);
+						Object[] aliResult = new Zheng_Banded_Frameshift(scoringMatrix, scoringMatrix.getGapOpen()).run(subQuery, subRef,
+								Zheng_Banded_Frameshift.AliMode.GLOBAL, bL, bR);
+						long runtime = System.currentTimeMillis() - time;
+						// processRuntimeInfo(aliResult, runtime);
+
 						closingFrameHits = generateFrameHits(aliResult, queryGapStart + 1, refGapStart + 1, h, run.getFrameDirection(),
-								query.length(), run);
+								query.length(), run, false, false);
 					}
 				} else if (run.getHitRun().get(i).getRef_end() > h.getRef_end()) {
 					h = run.getHitRun().get(i);
@@ -491,18 +590,36 @@ public class Alignment_Completer {
 
 			queryGapLength = queryGapEnd - queryGapStart + 1;
 			refGapLength = (refGapEnd - refGapStart + 1) * 3;
+			exp_queryGap_length = (int) Math.round(new Double(refGapLength) * 0.97);
+			exp_refGap_length = (int) Math.round(new Double(queryGapLength) * 1.03);
 
-			queryGapEnd = 2 * refGapLength < queryGapLength ? queryGapStart + refGapLength : queryGapEnd;
+			// queryGapEnd = 2 * refGapLength < queryGapLength ? queryGapStart + refGapLength : queryGapEnd;
+			if (queryGapLength > exp_queryGap_length)
+				queryGapEnd = queryGapStart + exp_queryGap_length;
+			else if (refGapLength > exp_refGap_length)
+				refGapEnd = refGapStart + (exp_refGap_length / 3) - 1;
 
 			closingFrameHits = null;
 			if (refGapStart < refGapEnd && queryGapStart < queryGapEnd - 4) {
 				String subQuery = query.substring(queryGapStart, queryGapEnd);
 				String subRef = giToSeq.get(run.getGi()).substring(refGapStart, refGapEnd);
-				Object[] aliResult = new Banded_Frameshift_Alignment(scoringMatrix, scoringMatrix.getGapOpen()).run(subQuery, subRef,
-						Banded_Frameshift_Alignment.AliMode.FREESHIFT_RIGHT, 0.1, 0.1);
-				// Object[] aliResult = new Frameshift_Alignment(scoringMatrix, 2 * scoringMatrix.getGapOpen()).run(subQuery, subRef,
-				// Frameshift_Alignment.AliMode.FREESHIFT_RIGHT);
-				closingFrameHits = generateFrameHits(aliResult, queryGapStart + 1, refGapStart + 1, h, run.getFrameDirection(), query.length(), run);
+
+				long time = System.currentTimeMillis();
+				// Object[] aliResult = new Banded_Frameshift_Alignment(scoringMatrix, scoringMatrix.getGapOpen()).run(subQuery, subRef,
+				// Banded_Frameshift_Alignment.AliMode.FREESHIFT_RIGHT, bL, bR);
+				// Object[] aliResult = new Banded_Frameshift_Alignment(scoringMatrix, scoringMatrix.getGapOpen()).run(subQuery, subRef,
+				// Banded_Frameshift_Alignment.AliMode.GLOBAL, bL, bR);
+				// Object[] aliResult = new Zheng_Banded_Frameshift(scoringMatrix, scoringMatrix.getGapOpen()).run(subQuery, subRef,
+				// Zheng_Banded_Frameshift.AliMode.GLOBAL, bL, bR);
+				Object[] aliResult = new Zheng_XDrop_Frameshift(scoringMatrix, scoringMatrix.getGapOpen()).run(subQuery, subRef,
+						Zheng_XDrop_Frameshift.AliMode.RIGHT, xDrop, 30);
+				// Object[] aliResult = new Zheng_XDrop_Frameshift_Ext(scoringMatrix, scoringMatrix.getGapOpen()).run(subQuery, subRef,
+				// Zheng_XDrop_Frameshift_Ext.AliMode.RIGHT, 15);
+				long runtime = System.currentTimeMillis() - time;
+				// processRuntimeInfo(aliResult, runtime);
+
+				closingFrameHits = generateFrameHits(aliResult, queryGapStart + 1, refGapStart + 1, h, run.getFrameDirection(), query.length(), run,
+						false, true);
 			}
 			closingHits.add(closingFrameHits);
 
@@ -554,12 +671,32 @@ public class Alignment_Completer {
 					queryGapEnd = query.length();
 
 					if (refGapStart < refGapEnd && queryGapStart < queryGapEnd - 4) {
-						Object[] aliResult = new Banded_Frameshift_Alignment(scoringMatrix, scoringMatrix.getGapOpen()).run(query, ref,
-								Banded_Frameshift_Alignment.AliMode.SEMI_GLOBAL, 1., 1.);
-						queryGapStart = ((int[]) aliResult[4])[0] * 3;
-						refGapStart = ((int[]) aliResult[4])[1];
+
+						// Object[] aliResult = new Banded_Frameshift_Alignment(scoringMatrix, scoringMatrix.getGapOpen()).run(query, ref,
+						// Banded_Frameshift_Alignment.AliMode.SEMI_GLOBAL, 1., 1.);
+						// queryGapStart = ((int[]) aliResult[4])[0] * 3;
+						// refGapStart = ((int[]) aliResult[4])[1];
+
+						h = run.getHitRun().firstElement();
+						offset = h.getHitType() != HitType.Synthetic ? Math.abs(h.getId() * step) : 0;
+						queryGapStart = frameDir == Frame_Direction.Positiv ? (h.getQuery_start() - 1 + offset)
+								: query.length() - h.getQuery_start() - offset;
+						Hit hLast = run.getHitRun().lastElement();
+						offset = hLast.getHitType() != HitType.Synthetic ? Math.abs(hLast.getId() * step) : 0;
+						queryGapEnd = frameDir == Frame_Direction.Positiv ? (hLast.getQuery_start() - 1 + offset + (hLast.getQuery_length() * 3))
+								: query.length() - (hLast.getQuery_start() + offset - (hLast.getQuery_length() * 3));
+
+						String subQuery = query.substring(queryGapStart, queryGapEnd);
+
+						refGapStart = h.getRef_start();
+						refGapEnd = hLast.getRef_end();
+						String subRef = ref.substring(refGapStart, refGapEnd);
+
+						Object[] aliResult = new Zheng_Banded_Frameshift(scoringMatrix, scoringMatrix.getGapOpen()).run(subQuery, subRef,
+								Zheng_Banded_Frameshift.AliMode.GLOBAL, bL, bR);
+
 						Vector<Hit> frameHits = generateFrameHits(aliResult, queryGapStart + 1, refGapStart + 1, h, run.getFrameDirection(),
-								query.length(), run);
+								query.length(), run, true, true);
 						run.getHitRun().clear();
 						run.getHitRun().addAll(frameHits);
 					}
@@ -585,6 +722,13 @@ public class Alignment_Completer {
 
 		}
 
+		// private void processRuntimeInfo(Object[] aliResult, long runtime) {
+		// int aliLength = ((String) aliResult[0]).length();
+		// int bin = aliLength / 100;
+		// lengthToRuntime.putIfAbsent(bin, 0L);
+		// lengthToRuntime.put(bin, lengthToRuntime.get(bin) + runtime);
+		// }
+
 		public class Hit_Comparator implements Comparator<Hit> {
 
 			@Override
@@ -599,7 +743,7 @@ public class Alignment_Completer {
 		}
 
 		private Vector<Hit> generateFrameHits(Object[] aliResult, int queryStart, int refStart, Hit hit, Frame_Direction frame_Direction,
-				int totalQueryLength, Hit_Run run) {
+				int totalQueryLength, Hit_Run run, boolean firstHit, boolean lastHit) {
 
 			Vector<Hit> closingHits = new Vector<Hit>();
 
@@ -614,8 +758,12 @@ public class Alignment_Completer {
 
 				Integer frameID = i < frameIDs.length() ? Character.getNumericValue(frameIDs.charAt(i)) : null;
 
-				if (i == 0)
+				// if (frameID == null)
+				// System.out.println(">>>\n" + aliResult[0] + "\n" + aliResult[1] + "\n" + aliResult[2]);
+
+				if (i == 0) {
 					qStart = qStart + frameID - 1;
+				}
 
 				if (i < frameIDs.length() && (i == 0 || lastFrameID == frameID)) {
 
@@ -635,6 +783,27 @@ public class Alignment_Completer {
 					String[] subAli = { queryAli, refAli };
 
 					if (rLength > 1) {
+
+						if (closingHits.isEmpty() && firstHit) {
+							Object[] clippedRes = clipBeginning(subAli, qStart, rStart);
+							subAli = (String[]) clippedRes[0];
+							int qUnaligned = (int) clippedRes[1];
+							int rUnaligned = (int) clippedRes[2];
+							qStart += qUnaligned * 3;
+							qLength -= qUnaligned * 3;
+							rStart += rUnaligned;
+							rLength -= rUnaligned;
+						}
+
+						if (i == frameIDs.length() && lastHit) {
+							Object[] clippedRes = clipEnd(subAli, qStart, rStart);
+							subAli = (String[]) clippedRes[0];
+							int qUnaligned = (int) clippedRes[1];
+							int rUnaligned = (int) clippedRes[2];
+							qLength -= qUnaligned * 3;
+							rLength -= rUnaligned;
+						}
+
 						Hit h = generateHit(subAli, qStart, qStart + qLength, rStart, rStart + rLength - 1, hit, lastFrameID, frame_Direction,
 								totalQueryLength);
 						closingHits.add(h);
@@ -644,6 +813,27 @@ public class Alignment_Completer {
 
 						// computing offset at query start
 						int offset = frameID - lastFrameID;
+						// System.out.println("---> " + offset + " = " + frameID + " - " + lastFrameID + " " + subAliResult[0]);
+
+						if (i > 0) {
+
+							// artifact produced by Zheng-Frameshift-Alignment
+							switch (offset) {
+							case (-2):
+								offset = 1;
+								break;
+							case (-1):
+								offset = -1;
+								break;
+							case (2):
+								offset = -1;
+								break;
+							case (1):
+								offset = 1;
+								break;
+							}
+
+						}
 
 						// resetting parameters for recording next frame hit
 						qStart = qStart + qLength + offset;
@@ -663,6 +853,43 @@ public class Alignment_Completer {
 			}
 
 			return closingHits;
+
+		}
+
+		private Object[] clipBeginning(String[] ali, int qStart, int rStart) {
+			int qUnaligned = 0, rUnaligned = 0;
+			for (int i = 0; i < ali[0].length(); i++) {
+				if (ali[1].charAt(i) == '-') {
+					qUnaligned++;
+				} else if (ali[0].charAt(i) == '-') {
+					rUnaligned++;
+				} else
+					break;
+			}
+			int unaligned = qUnaligned + rUnaligned;
+			String[] clippedAli = { ali[0].substring(unaligned), ali[1].substring(unaligned) };
+
+			Object[] res = { clippedAli, qUnaligned, rUnaligned };
+			return res;
+
+		}
+
+		private Object[] clipEnd(String[] ali, int qStart, int rStart) {
+			int qUnaligned = 0, rUnaligned = 0;
+			int aliLength = ali[0].length();
+			for (int i = ali[0].length() - 1; i >= 0; i--) {
+				if (ali[1].charAt(i) == '-') {
+					qUnaligned++;
+				} else if (ali[0].charAt(i) == '-') {
+					rUnaligned++;
+				} else
+					break;
+			}
+			int unaligned = qUnaligned + rUnaligned;
+			String[] clippedAli = { ali[0].substring(0, aliLength - unaligned), ali[1].substring(0, aliLength - unaligned) };
+
+			Object[] res = { clippedAli, qUnaligned, rUnaligned };
+			return res;
 
 		}
 
@@ -722,7 +949,7 @@ public class Alignment_Completer {
 					while (((readChars = raf.read(buffer.array())) != -1) && !doBreak) {
 						for (int i = 0; i < readChars; i++) {
 							char c = (char) buffer.get(i);
-							if (c == '>') {
+							if (c == '>' || c == '+') {
 								doBreak = true;
 								break;
 							}
@@ -731,6 +958,10 @@ public class Alignment_Completer {
 						}
 					}
 					String seq = buf.toString();
+
+					if (seq.contains("+"))
+						System.out.println(seq);
+
 					readIDToSeq.put(readID, seq);
 				}
 				raf.close();
@@ -746,27 +977,51 @@ public class Alignment_Completer {
 
 		@Override
 		public int compare(Hit_Run r1, Hit_Run r2) {
-			// int s1 = (int) Math.round(Math.log(Math.pow((double)
-			// r1.getScore(), (double) r1.getCoverge())));
-			// int s2 = (int) Math.round(Math.log(Math.pow((double)
-			// r2.getScore(), (double) r2.getCoverge())));
-			int s1 = r1.getSumScore() * r1.getCoverge();
-			int s2 = r2.getSumScore() * r2.getCoverge();
-			// int s1 = r1.getCoverge();
-			// int s2 = r2.getCoverge();
-			if (s1 > s2)
-				return -1;
-			if (s1 < s2)
-				return 1;
-			return 0;
+			String s1 = r1.getReadID();
+			String s2 = r2.getReadID();
+			return s1.compareTo(s2);
 		}
+
+		// @Override
+		// public int compare(Hit_Run r1, Hit_Run r2) {
+		// // int s1 = (int) Math.round(Math.log(Math.pow((double)
+		// // r1.getScore(), (double) r1.getCoverge())));
+		// // int s2 = (int) Math.round(Math.log(Math.pow((double)
+		// // r2.getScore(), (double) r2.getCoverge())));
+		// int s1 = r1.getSumScore() * r1.getCoverge();
+		// int s2 = r2.getSumScore() * r2.getCoverge();
+		// // int s1 = r1.getCoverge();
+		// // int s2 = r2.getCoverge();
+		// if (s1 > s2)
+		// return -1;
+		// if (s1 < s2)
+		// return 1;
+		// return 0;
+		// }
 
 	}
 
 	private String reverseComplementString(String s) {
-		String rev = new StringBuffer(s).reverse().toString();
-		String revComp = rev.replace("A", "t").replace("T", "a").replace("C", "g").replace("G", "c").toUpperCase();
-		return revComp;
+		StringBuffer rev = new StringBuffer(s).reverse();
+		StringBuffer revComp = new StringBuffer(rev.length());
+		for (int i = 0; i < rev.length(); i++) {
+			switch (rev.charAt(i)) {
+			case ('A'):
+				revComp = revComp.append('T');
+				break;
+			case ('T'):
+				revComp = revComp.append('A');
+				break;
+			case ('C'):
+				revComp = revComp.append('G');
+				break;
+			case ('G'):
+				revComp = revComp.append('C');
+				break;
+			}
+		}
+		// String revComp = rev.replace("A", "t").replace("T", "a").replace("C", "g").replace("G", "c").toUpperCase();
+		return revComp.toString();
 	}
 
 	public void checkRun(Hit_Run run, RandomAccessFile rafSAM, RandomAccessFile rafDAA, String query) {
@@ -786,8 +1041,9 @@ public class Alignment_Completer {
 			if (!qAli.equals(qTrans)) {
 				System.out.println("ERROR:");
 				System.out.println(run.getReadID() + " " + run.getGi());
-				System.out.println(h);
+				System.out.println(h + " SIZE: " + run.getHitRun().size());
 				System.out.println(qAli + "\n" + qTrans);
+				System.out.println(qDNA);
 				System.out.println("---");
 				// printRun(run, rafSAM, rafDAA);
 				// System.exit(0);

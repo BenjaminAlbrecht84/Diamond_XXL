@@ -106,7 +106,8 @@ public class CodonTranslator {
 		return prot.toString();
 	}
 
-	private char translateCodon(String codon) {
+	public char translateCodon(String codon) {
+		codon = codon.replaceAll("T", "U");
 		if (codonMap.containsKey(codon))
 			return codonMap.get(codon);
 		return 'X';

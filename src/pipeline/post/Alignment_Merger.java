@@ -66,61 +66,67 @@ public class Alignment_Merger {
 		String[] aliStrings1 = daaReader == null ? h1.getAlignmentStrings(rafSAM) : h1.getAlignmentStrings(rafDAA, daaReader);
 		String[] aliStrings2 = daaReader == null ? h2.getAlignmentStrings(rafSAM) : h2.getAlignmentStrings(rafDAA, daaReader);
 		int[] cutPoints = cmpCutPoint(o2, h1, h2, aliStrings1, aliStrings2, dir, matrix);
-		int length = cutPoints[0] + h2.getAliLength() - cutPoints[1];
 
-		// computing new alignment properties (scores, insertion, deletions,..)
-		int rawScore = 0, queryLength = 0;
-		int[] scores = new int[length];
-		BitSet query_insertions = new BitSet(length);
-		BitSet query_deletions = new BitSet(length);
-		// for (int i = 0; i < h1.getAliLength(); i++) {
-		for (int i = 0; i < cutPoints[0]; i++) {
-			scores[i] = scores1[i];
-			rawScore += scores[i];
-			query_insertions.set(i, h1.isQueryInsertion(i));
-			query_deletions.set(i, h1.isQueryDeletion(i));
-			if (!h1.isQueryDeletion(i))
-				queryLength++;
+		if (cutPoints != null) {
+			int length = cutPoints[0] + h2.getAliLength() - cutPoints[1];
+
+			// computing new alignment properties (scores, insertion, deletions,..)
+			int rawScore = 0, queryLength = 0;
+			int[] scores = new int[length];
+			BitSet query_insertions = new BitSet(length);
+			BitSet query_deletions = new BitSet(length);
+			// for (int i = 0; i < h1.getAliLength(); i++) {
+			for (int i = 0; i < cutPoints[0]; i++) {
+				scores[i] = scores1[i];
+				rawScore += scores[i];
+				query_insertions.set(i, h1.isQueryInsertion(i));
+				query_deletions.set(i, h1.isQueryDeletion(i));
+				if (!h1.isQueryDeletion(i))
+					queryLength++;
+			}
+			// for (int i = o2; i < h2.getAliLength(); i++) {
+			for (int i = cutPoints[1]; i < h2.getAliLength(); i++) {
+				// int index = h1.getAliLength() + i - o2;
+				int index = cutPoints[0] + i - cutPoints[1];
+				scores[index] = scores2[i];
+				rawScore += scores[index];
+				query_insertions.set(index, h2.isQueryInsertion(i));
+				query_deletions.set(index, h2.isQueryDeletion(i));
+				if (!h2.isQueryDeletion(i))
+					queryLength++;
+			}
+			// int queryLength = h1.getQuery_length() + h2.getQuery_length() - o2;
+
+			// computing new bit score
+			double s = rawScore;
+			double sPrime = (lambda * s - Math.log(k)) / Math.log(2);
+			int bitScore = (int) Math.round(sPrime);
+
+			// generating new alignment strings
+			String[] mergeResult = mergeAliStrings(aliStrings1, aliStrings2, o2, matrix, cutPoints);
+
+			// initializing new hit
+			Hit h = new Hit(h1.getId(), h1.getRef_start(), h2.getRef_end(), bitScore, rawScore, h1.getFile_pointer(), h1.getAccessPoint(),
+					h1.getQuery_start(), h1.getRef_length(), queryLength, scores, query_insertions, query_deletions, h1.getSubjectID());
+			String[] aliStrings = { mergeResult[0], mergeResult[1], mergeResult[2] };
+			h.copyAliStrings(aliStrings);
+			h.setHitType(HitType.Merged);
+			h.setFrame(h1.getFrame());
+
+			if (h1.getMetaInfo() != null) {
+				Object[] meta = new Object[3];
+				meta[0] = new Integer((int) h1.getMetaInfo()[0]);
+				meta[1] = new Integer((int) h1.getMetaInfo()[1]);
+				String[] mergedAli = { mergeResult[3], mergeResult[4] };
+				meta[2] = new DAACompressAlignment().run(mergedAli);
+				h.setMetaInfo(meta);
+			}
+
+			return h;
+
 		}
-		// for (int i = o2; i < h2.getAliLength(); i++) {
-		for (int i = cutPoints[1]; i < h2.getAliLength(); i++) {
-			// int index = h1.getAliLength() + i - o2;
-			int index = cutPoints[0] + i - cutPoints[1];
-			scores[index] = scores2[i];
-			rawScore += scores[index];
-			query_insertions.set(index, h2.isQueryInsertion(i));
-			query_deletions.set(index, h2.isQueryDeletion(i));
-			if (!h2.isQueryDeletion(i))
-				queryLength++;
-		}
-		// int queryLength = h1.getQuery_length() + h2.getQuery_length() - o2;
 
-		// computing new bit score
-		double s = rawScore;
-		double sPrime = (lambda * s - Math.log(k)) / Math.log(2);
-		int bitScore = (int) Math.round(sPrime);
-
-		// generating new alignment strings
-		String[] mergeResult = mergeAliStrings(aliStrings1, aliStrings2, o2, matrix, cutPoints);
-
-		// initializing new hit
-		Hit h = new Hit(h1.getId(), h1.getRef_start(), h2.getRef_end(), bitScore, rawScore, h1.getFile_pointer(), h1.getAccessPoint(),
-				h1.getQuery_start(), h1.getRef_length(), queryLength, scores, query_insertions, query_deletions, h1.getSubjectID());
-		String[] aliStrings = { mergeResult[0], mergeResult[1], mergeResult[2] };
-		h.copyAliStrings(aliStrings);
-		h.setHitType(HitType.Merged);
-		h.setFrame(h1.getFrame());
-
-		if (h1.getMetaInfo() != null) {
-			Object[] meta = new Object[3];
-			meta[0] = new Integer((int) h1.getMetaInfo()[0]);
-			meta[1] = new Integer((int) h1.getMetaInfo()[1]);
-			String[] mergedAli = { mergeResult[3], mergeResult[4] };
-			meta[2] = new DAACompressAlignment().run(mergedAli);
-			h.setMetaInfo(meta);
-		}
-
-		return h;
+		return null;
 
 	}
 
@@ -151,6 +157,8 @@ public class Alignment_Merger {
 				q1 = ali1[0].charAt(c1 - 1) == '-' ? -1 : qStart1 + ((c1) - h1.numOfQueryDeletionsFixed(0, c1)) * 3;
 				q2 = ali2[0].charAt(c2 - 1) == '-' ? -1 : qStart2 + ((c2) - h2.numOfQueryDeletionsFixed(0, c2)) * 3;
 			}
+			if (q1 != q2)
+				return null;
 		}
 
 		int[] cutPoints = { c1, c2 };

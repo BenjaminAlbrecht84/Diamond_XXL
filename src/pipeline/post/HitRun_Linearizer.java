@@ -45,7 +45,7 @@ public class HitRun_Linearizer {
 		// determining properties of run
 		Hit h1 = hits.get(0);
 		Vector<Hit> linearHits = new Vector<Hit>();
-		setHitInfo(h1, rafSAM, rafDAA);
+//		setHitInfo(h1, rafSAM, rafDAA);
 		linearHits.addElement(h1);
 		for (int i = 1; i < hits.size(); i++) {
 
@@ -58,7 +58,7 @@ public class HitRun_Linearizer {
 
 			if (r1 <= l2) { // h1 and h2 are consecutive hits
 
-				setHitInfo(h2, rafSAM, rafDAA);
+//				setHitInfo(h2, rafSAM, rafDAA);
 				linearHits.add(h2);
 				h1 = h2;
 
@@ -113,7 +113,7 @@ public class HitRun_Linearizer {
 					// adopting second hit
 					int diff2 = h1.getRef_start() - 1 - h2.getRef_start() > 0 ? h1.getRef_start() - 1 - h2.getRef_start() : 0;
 					if (diff2 == 0) {
-						setHitInfo(h2, rafSAM, rafDAA);
+//						setHitInfo(h2, rafSAM, rafDAA);
 						linearHits.add(h2);
 						h1 = h2;
 					} else {

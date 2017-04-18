@@ -55,7 +55,7 @@ public class HitRun_Writer {
 			StringBuffer buf = new StringBuffer("");
 			RandomAccessFile rafSAM = new RandomAccessFile(samFile, "r");
 			RandomAccessFile rafDAA = daaReader != null ? new RandomAccessFile(daaReader.getDAAFile(), "r") : null;
-			Collections.sort(runs, new HitRunComparator());
+//			Collections.sort(runs, new HitRunComparator());
 
 			for (Hit_Run run : runs) {
 

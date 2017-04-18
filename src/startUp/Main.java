@@ -3,6 +3,7 @@ package startUp;
 import io.OptionParser;
 import io.daa.DAA_Reader;
 import io.daa.DAA_Writer;
+import io.daa.DAA_Writer_Slashes;
 
 import java.io.File;
 import java.io.IOException;
@@ -80,7 +81,6 @@ public class Main {
 			daaFile = dR.execute(dbFile, shredded_query, outputFolder, cores, parseMode);
 			samFile = new File(outputFolder.getAbsolutePath() + File.separator + queryName + "_tmp.sam");
 			samFile.delete();
-			samFile.delete();
 			samFile.createNewFile();
 		}
 
@@ -109,6 +109,8 @@ public class Main {
 		// initializing daa writer
 		File out_daa = new File(outputFolder.getAbsolutePath() + File.separator + queryName + ".daa");
 		DAA_Writer daaWriter = parseMode == ParseMode.DAA ? new DAA_Writer(out_daa, samFile, daaReader) : null;
+		File out_daa_slashes = new File(outputFolder.getAbsolutePath() + File.separator + queryName + "_slashes.daa");
+		DAA_Writer_Slashes daaWriterSlashes = parseMode == ParseMode.DAA ? new DAA_Writer_Slashes(out_daa_slashes, samFile, daaReader) : null;
 
 		// initializing run writer
 		File out_runs = new File(outputFolder.getAbsolutePath() + File.separator + queryName + ".runs");
@@ -116,7 +118,8 @@ public class Main {
 
 		// completing alignments
 		new Alignment_Completer().run(hitRuns, queryFile, dbFile, samFile, daaReader, matrix, dR.getLambda(), dR.getK(), cores, scorer, step, length,
-				samConverter, daaWriter, runWriter, maxEValue, minBitScore, minCoverage, useFilters, realign, rej_file_2, blockSize, null);
+				samConverter, daaWriter, daaWriterSlashes, runWriter, maxEValue, minBitScore, minCoverage, useFilters, realign, rej_file_2, blockSize,
+				null);
 
 		// deleting files
 		samFile.delete();
@@ -126,7 +129,7 @@ public class Main {
 	}
 
 	private static int cmpStep(int length, int p) {
-		int step = Math.round(length / p);
+		int step = Math.round(length / (100 / p));
 		return adaptSize(step);
 	}
 

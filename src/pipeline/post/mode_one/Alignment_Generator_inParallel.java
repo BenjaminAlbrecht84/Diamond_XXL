@@ -450,31 +450,35 @@ public class Alignment_Generator_inParallel {
 					Hit hM = new Alignment_Merger(scorer, sam_file, daaReader, step, length).mergeTwoHits(hL, hR, matrix, rafSAM, rafDAA, null, null,
 							null, dir);
 
-					int offset_L = Math.abs(hL.getId() * step);
-					int qStart_L = dir == Frame_Direction.Positiv ? hL.getQuery_start() + offset_L - 1 : length - hL.getQuery_start() - offset_L;
-					int qEnd_L = qStart_L + hL.getQuery_length() * 3;
+					if (hM != null) {
 
-					int offset_R = Math.abs(hR.getId() * step);
-					int qStart_R = dir == Frame_Direction.Positiv ? hR.getQuery_start() + offset_R - 1 : length - hR.getQuery_start() - offset_R;
-					int qEnd_R = qStart_R + hR.getQuery_length() * 3;
+						int offset_L = Math.abs(hL.getId() * step);
+						int qStart_L = dir == Frame_Direction.Positiv ? hL.getQuery_start() + offset_L - 1 : length - hL.getQuery_start() - offset_L;
+						int qEnd_L = qStart_L + hL.getQuery_length() * 3;
 
-					int offset_M = Math.abs(hM.getId() * step);
-					int qStart_M = dir == Frame_Direction.Positiv ? hM.getQuery_start() + offset_M - 1 : length - hM.getQuery_start() - offset_M;
-					int qEnd_M = qStart_M + hM.getQuery_length() * 3;
+						int offset_R = Math.abs(hR.getId() * step);
+						int qStart_R = dir == Frame_Direction.Positiv ? hR.getQuery_start() + offset_R - 1 : length - hR.getQuery_start() - offset_R;
+						int qEnd_R = qStart_R + hR.getQuery_length() * 3;
 
-					int qEnd = qEnd_R > qEnd_L ? qEnd_R : qEnd_L;
-					if (qEnd_M == qEnd) {
+						int offset_M = Math.abs(hM.getId() * step);
+						int qStart_M = dir == Frame_Direction.Positiv ? hM.getQuery_start() + offset_M - 1 : length - hM.getQuery_start() - offset_M;
+						int qEnd_M = qStart_M + hM.getQuery_length() * 3;
 
-						resHits.remove(hL);
-						resHits.add(hM);
+						int qEnd = qEnd_R > qEnd_L ? qEnd_R : qEnd_L;
+						if (qEnd_M == qEnd) {
 
-						// System.out.println();
-						// printHit(hL, rafSAM, rafDAA);
-						// printHit(hR, rafSAM, rafDAA);
-						// printHit(hM, rafSAM, rafDAA);
+							resHits.remove(hL);
+							resHits.add(hM);
 
-					} else
-						recHits.add(hR);
+							// System.out.println();
+							// printHit(hL, rafSAM, rafDAA);
+							// printHit(hR, rafSAM, rafDAA);
+							// printHit(hM, rafSAM, rafDAA);
+
+						} else
+							recHits.add(hR);
+
+					}
 
 				}
 

@@ -6,7 +6,6 @@ import java.io.FileReader;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.HashMap;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -24,11 +23,13 @@ public class Fastq_Reader {
 			StringBuffer qual = new StringBuffer("");
 			while ((line = buf.readLine()) != null) {
 				if (line.startsWith("@") || line.startsWith(">")) {
-					if (seq.length() != 0 && !id.isEmpty())
-						reads.add(new Read(id, seq.toString(), qual.toString()));
+					if (seq.length() != 0 && !id.isEmpty()) {
+						addRead(new Read(id, seq.toString(), qual.toString()), reads);
+					}
 					seq = new StringBuffer("");
 					qual = new StringBuffer("");
 					id = line.substring(1).split(" ")[0];
+					// id = line.substring(1);
 					readSequence = true;
 				} else if (line.startsWith("+")) {
 					readSequence = false;
@@ -39,23 +40,22 @@ public class Fastq_Reader {
 				}
 			}
 			if (seq.length() != 0 && !id.isEmpty())
-				reads.add(new Read(id, seq.toString(), qual.toString()));
+				addRead(new Read(id, seq.toString(), qual.toString()), reads);
 			buf.close();
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
-//		Vector<Read> filteredReads = new Vector<Read>();
-//		for (int i = 366; i < 367; i++) {
-//			System.out.println(reads.get(i).getId());
-//			System.out.println(reads.get(i).getSeq());
-//			filteredReads.add(reads.get(i));
-//		}
-//		return filteredReads;
+		return reads;
 
-		 return reads;
-		 
+	}
+
+	public void addRead(Read r, Vector<Read> reads) {
+		if (!reads.contains(r))
+			reads.add(r);
+		else
+			System.err.println("Read has not a unique identifier: '" + r.getId() + "'. Read will be ignored!");
 	}
 
 	public ConcurrentHashMap<String, Long> parseReadIDs(File fastq_File) {
@@ -80,7 +80,8 @@ public class Fastq_Reader {
 						parseID = true;
 					}
 					if (c == '\n' && buf.length() != 0) {
-						readToPointer.put(buf.toString(), pointer + i);
+						if (!readToPointer.containsKey(buf.toString()))
+							readToPointer.put(buf.toString(), pointer + i);
 						buf = new StringBuffer();
 					}
 					if (c == '\n')
