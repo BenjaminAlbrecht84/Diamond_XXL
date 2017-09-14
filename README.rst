@@ -6,7 +6,7 @@
 For running the program DIAMOND_XXL you have to perform the following two main steps:
 
 1. Download and install DIAMOND (v0.8.17 or higher); see http://github.com/bbuchfink/diamond.
-2. Get the runnable jar file ``diamond_xxl-0.8.5.jar`` from https://github.com/BenjaminAlbrecht84/Diamond_XXL/releases/download/v0.8.5/diamond_xxl-0.8.5.jar
+2. Get the runnable jar file ``diamond_xxl-0.8.5.jar`` from https://github.com/BenjaminAlbrecht84/Diamond_XXL/releases/download/v0.8.6/diamond_xxl-0.8.6.jar
 
 Basic command line use
 ======================
@@ -38,19 +38,19 @@ The output is automatically written into the output folder specified by the ``-o
 Options
 =======
 
-============== ======= ===========
-Option         Default Description
-============== ======= ===========
--exe                   Path to DIAMOND binary file.
--d                     Path to DIAMOND database file.
--q                     Path to query input file in FASTA or FASTQ format.
--o                     Path to output folder.
--p             max     Number of CPU threads.
---minBitScore  30      Minimum BitScore for a reported hit. 
---realign              Realings all alignments reported by DIAMOND.
--c             90      Minimum percentage of the reference that has to be covered by the query.
--m             10      Size of available main memory (in GB).
-============== ======= ===========
+============== =======    ===========
+Option         Default    Description
+============== =======    ===========
+-exe                      Path to DIAMOND binary file.
+-d                        Path to DIAMOND database file.
+-q                        Path to query input file in FASTA or FASTQ format.
+-o                        Path to output folder.
+-p             max        Number of CPU threads.
+--minBitScore  30         Minimum BitScore for a reported hit. 
+--realign      activated  Realings all alignments reported by DIAMOND.
+-c             0          Minimum percentage of the reference that has to be covered by the query.
+-m             10         Size of available main memory (in GB).
+============== =======    ===========
 
 Additionally, all DIAMOND-specific options can be set for configuring DIAMOND.
 
