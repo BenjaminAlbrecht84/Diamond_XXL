@@ -38,7 +38,7 @@ public class Dmnd_IndexReader {
 
 	public void createIndex() {
 
-		System.out.println("STEP_5>Indexing reference database...");
+		System.out.println("Step 5 - Indexing reference database...");
 		long time = System.currentTimeMillis();
 
 		parseSeqLocations();
@@ -122,7 +122,8 @@ public class Dmnd_IndexReader {
 				while ((readChars = is.read(buffer.array())) != -1) {
 					for (int i = 0; i < readChars - 15; i += 16) {
 						long start = (long) buffer.getLong(i);
-						long length = (long) buffer.getLong(i + 8);
+						int length = buffer.getInt(i + 8);
+						// long length = (long) buffer.getLong(i + 8);
 						if (length != 0) {
 							long[] loc = { start, length };
 							allSeqLocations.add(loc);

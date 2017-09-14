@@ -9,15 +9,15 @@ public class OptionParser {
 
 	// performance options
 	private int numOfThreads = Runtime.getRuntime().availableProcessors();
-	private int shredLength = 1000;
-	private int shredOverlap = 50;
-	private boolean realign = false;
+	private int shredLength = 5000;
+	private int shredOverlap = 100;
+	private boolean realign = true;
 
 	// scoring & reporting options
 	private Integer delta = null;
 	private double maxSumProbability = 0.001;
 	private int minSumScore = 10;
-	private int minCoverage = 90;
+	private int minCoverage = 0;
 	private int minBitScore = 30;
 
 	// additional options
@@ -246,6 +246,7 @@ public class OptionParser {
 				i++;
 				break;
 			case "--block-size":
+			case "-b":
 				try {
 					diamondOpts.setBlockSize(Double.parseDouble(args[i + 1]));
 				} catch (Exception e) {

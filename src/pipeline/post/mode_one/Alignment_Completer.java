@@ -116,7 +116,7 @@ public class Alignment_Completer {
 		totalNumberOfRuns = allRuns.size();
 
 		// initializing AA-Mapper
-		String aaString = new AA_Alphabet().getAaString();
+		String aaString = AA_Alphabet.getAaString();
 		indexToAA = new ConcurrentHashMap<Integer, Character>();
 		for (int i = 0; i < aaString.length(); i++)
 			indexToAA.put(i, aaString.charAt(i));
@@ -237,10 +237,11 @@ public class Alignment_Completer {
 				try {
 
 					int chunkSize = 5000;
-					Vector<Hit_Run> subset = new Vector<Hit_Run>();
 
 					while (!runs.isEmpty()) {
 
+						// extracting new set of hits
+						Vector<Hit_Run> subset = new Vector<Hit_Run>();
 						for (int i = runs.size() - 1; i >= 0; i--) {
 							Hit_Run run = runs.elementAt(i);
 							subset.add(run);
@@ -332,7 +333,6 @@ public class Alignment_Completer {
 									h = null;
 								}
 								run.freeMemory();
-								allRuns.remove(run);
 							}
 						}
 						highScoringRuns.clear();
@@ -344,7 +344,6 @@ public class Alignment_Completer {
 						// ready for processing next subset
 						for (int i = 0; i < subset.size(); i++)
 							runs.remove(runs.size() - 1);
-						subset = new Vector<Hit_Run>();
 
 					}
 

@@ -132,7 +132,7 @@ public class DAA_Writer {
 						int rawScore = h.getRawScore();
 						write(byteBuffer, readLittleEndian(rawScore));
 
-//						int queryStart = h.getQuery_start() - 1;
+						// int queryStart = h.getQuery_start() - 1;
 						int queryStart = h.getQuery_start();
 						write(byteBuffer, readLittleEndian(queryStart));
 

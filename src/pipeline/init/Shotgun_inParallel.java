@@ -90,10 +90,12 @@ public class Shotgun_inParallel {
 			for (Read r : long_reads) {
 				String seq = r.getSeq();
 				int counter = 0;
-				step = DO_SHREDDING ? step : seq.length();
-				length = DO_SHREDDING ? length : seq.length();
-				for (int i = 0; i < seq.length(); i += step) {
-					int j = i + length < seq.length() ? i + length : getTrimmedLength(seq);
+
+				int cur_step = DO_SHREDDING && step < seq.length() && step > 0 ? step : seq.length();
+				int cur_length = DO_SHREDDING && length < seq.length() && length > 0 ? length : seq.length();		
+
+				for (int i = 0; i < seq.length(); i += cur_step) {
+					int j = i + length < seq.length() ? i + cur_length : getTrimmedLength(seq);
 					String subseq = seq.substring(i, j);
 					String id = r.getId() + ":" + (counter++);
 					readBuffer.add(new Read(id, subseq, ""));

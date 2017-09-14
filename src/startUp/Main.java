@@ -65,7 +65,8 @@ public class Main {
 
 		// length/step must be a multiple of 3
 		int length = adaptSize(parser.getShredLength());
-		int step = cmpStep(length, 100 - parser.getShredOverlap());
+//		int step = cmpStep(length, 100 - parser.getShredOverlap());
+		int step = adaptSize(length - parser.getShredOverlap());
 
 		// performing sequence shotgun
 		Shotgun_inParallel shotgun = new Shotgun_inParallel();
@@ -129,8 +130,10 @@ public class Main {
 	}
 
 	private static int cmpStep(int length, int p) {
-		int step = Math.round(length / (100 / p));
-		return adaptSize(step);
+		int step = (int) Math.round(new Double(length) / (100. / new Double(p)));
+		System.out.println(length + " / " + 100 + " / " + p + " = " + step);
+		System.out.println("----> " + step);
+		return adaptSize(p);
 	}
 
 	private static int adaptSize(int s) {
