@@ -2,6 +2,7 @@ package pipeline.post.mode_one;
 
 import java.io.File;
 import java.io.RandomAccessFile;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -34,7 +35,7 @@ public class Alignment_Generator_inParallel {
 		Positiv, Negativ
 	}
 
-	private Vector<Hit_Run> hitRuns;
+	private ConcurrentHashMap<String, ArrayList<Hit_Run>> hitRuns;
 	private CountDownLatch latch;
 	private AtomicInteger processedReads = new AtomicInteger(0);
 	private int numOfReads, last_p = 0;
@@ -66,13 +67,13 @@ public class Alignment_Generator_inParallel {
 		this.rej_file_1 = rej_file_1;
 	}
 
-	public Vector<Hit_Run> run(int cores) {
+	public ConcurrentHashMap<String,  ArrayList<Hit_Run>> run(int cores) {
 
 		Runtime.getRuntime().availableProcessors();
 
 		rejectedWriter = rej_file_1 != null ? new RejectedWriter(rej_file_1) : null;
 		samWriter = new SAM_Writer(sam_file, daaReader);
-		hitRuns = new Vector<Hit_Run>();
+		hitRuns = new ConcurrentHashMap<String,  ArrayList<Hit_Run>>();
 		numOfReads = readMap.keySet().size();
 		int chunk = (int) Math.ceil((double) numOfReads / (double) cores);
 		chunk = chunk > 100 ? 100 : chunk;
@@ -118,7 +119,8 @@ public class Alignment_Generator_inParallel {
 	}
 
 	private synchronized void reportLocalHitRuns(Hit_Run run) {
-		hitRuns.add(run);
+		hitRuns.putIfAbsent(run.getReadID(), new  ArrayList<Hit_Run>());
+		hitRuns.get(run.getReadID()).add(run);
 	}
 
 	public class Scorer implements Runnable {

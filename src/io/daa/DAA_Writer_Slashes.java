@@ -207,13 +207,15 @@ public class DAA_Writer_Slashes {
 		if (f2 - f1 == 1 || f2 - f1 == -2) {
 			byte op1 = 0;
 			op1 |= 3 << 6;
-			op1 |= AA_Alphabet.getIndex('/');
+//			 op1 |= AA_Alphabet.getIndex('/');
+			op1 |= AA_Alphabet.getIndex('\\');
 			return op1;
 		}
 		if (f2 - f1 == -1 || f2 - f1 == 2) {
 			byte op2 = 0;
 			op2 |= 3 << 6;
-			op2 |= AA_Alphabet.getIndex('\\');
+//			 op2 |= AA_Alphabet.getIndex('\\');
+			op2 |= AA_Alphabet.getIndex('/');
 			return op2;
 		}
 		return null;

@@ -8,6 +8,7 @@ import io.daa.DAA_Writer_Slashes;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
@@ -100,7 +101,7 @@ public class Main {
 			readMap = daaReader.parseAllHits(cores);
 
 		// merging/selecting hits
-		Vector<Hit_Run> hitRuns = new Alignment_Generator_inParallel(readMap, scorer, samFile, daaReader, matrix, maxEValue, minSumScore, useFilters,
+		ConcurrentHashMap<String,  ArrayList<Hit_Run>> hitRuns = new Alignment_Generator_inParallel(readMap, scorer, samFile, daaReader, matrix, maxEValue, minSumScore, useFilters,
 				step, length, rej_file_1).run(cores);
 
 		// initializing sam writer

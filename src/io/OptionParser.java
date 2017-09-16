@@ -9,7 +9,7 @@ public class OptionParser {
 
 	// performance options
 	private int numOfThreads = Runtime.getRuntime().availableProcessors();
-	private int shredLength = 5000;
+	private int shredLength = 1000;
 	private int shredOverlap = 100;
 	private boolean realign = true;
 

@@ -33,7 +33,7 @@ public class Shotgun_inParallel {
 
 		totalReads = long_reads.size();
 
-		System.out.println("STEP_1>Shredding " + totalReads + " reads...");
+		System.out.println("STEP_1>Shredding " + totalReads + " reads into " + length + " fragments with overlap " + (length - step) + "...");
 		long time = System.currentTimeMillis();
 
 		Fasta_Writer writer = new Fasta_Writer();
@@ -92,7 +92,7 @@ public class Shotgun_inParallel {
 				int counter = 0;
 
 				int cur_step = DO_SHREDDING && step < seq.length() && step > 0 ? step : seq.length();
-				int cur_length = DO_SHREDDING && length < seq.length() && length > 0 ? length : seq.length();		
+				int cur_length = DO_SHREDDING && length < seq.length() && length > 0 ? length : seq.length();
 
 				for (int i = 0; i < seq.length(); i += cur_step) {
 					int j = i + length < seq.length() ? i + cur_length : getTrimmedLength(seq);

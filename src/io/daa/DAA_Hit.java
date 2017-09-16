@@ -126,6 +126,7 @@ public class DAA_Hit {
 
 		int q = 0;
 		for (int editOp : editOperations) {
+			
 			switch (editOp >>> 6) {
 			case (0): // handling match
 				for (int i = 0; i < (editOp & 63); i++) {
@@ -167,7 +168,7 @@ public class DAA_Hit {
 				break;
 			}
 		}
-
+		
 		String[] alignment = { bufs[0].toString(), bufs[1].toString() };
 		return alignment;
 

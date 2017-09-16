@@ -28,7 +28,7 @@ public class ReconstructAlignment {
 
 		// calculate ref string
 		String ref = reconstructRefSeq(seq, md, (Vector<Integer[]>) queryResult[1], query);
-
+		
 		String[] alignments = { query, ref };
 		return run(alignments);
 	}

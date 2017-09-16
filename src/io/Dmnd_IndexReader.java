@@ -288,7 +288,7 @@ public class Dmnd_IndexReader {
 				StringBuffer aaSeq = new StringBuffer();
 				while ((readChars = raf.read(buffer.array())) != -1 && !doBreak) {
 					for (int r = 0; r < readChars; r++) {
-						int aaIndex = (int) buffer.get(r);
+						int aaIndex = (int) buffer.get(r);	
 						if (doBreak = (aaIndex == -1))
 							break;
 						aaSeq = aaSeq.append(aaString.charAt(aaIndex));

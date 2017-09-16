@@ -12,6 +12,7 @@ import java.io.RandomAccessFile;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -67,7 +68,7 @@ public class Alignment_Completer {
 	private DAA_Writer daaWriter;
 	private DAA_Writer_Slashes daaWriterSlashes;
 	private HitRun_Writer runWriter;
-	private Vector<Hit_Run> allRuns;
+	private ConcurrentHashMap<String, ArrayList<Hit_Run>> allRuns;
 	private double maxEValue;
 	private int minBitScore, minCoverage;
 	private boolean useFilters, realign;
@@ -81,10 +82,11 @@ public class Alignment_Completer {
 
 	private long time;
 
-	public void run(Vector<Hit_Run> runs, File queryFile, File refFile, File samFile, DAA_Reader daaReader, ScoringMatrix scoringMatrix,
-			double lambda, double k, int cores, HitRun_Rater hitRunRater, int step, int length, HitToSamConverter samConverter, DAA_Writer daaWriter,
-			DAA_Writer_Slashes daaWriterSlashes, HitRun_Writer runWriter, double maxEValue, int minSumScore, int minCoverage, boolean useFilters,
-			boolean realign, File rej_file_2, double blockSize, ReportAlignmentFiles aliReporter) {
+	public void run(ConcurrentHashMap<String, ArrayList<Hit_Run>> runs, File queryFile, File refFile, File samFile, DAA_Reader daaReader,
+			ScoringMatrix scoringMatrix, double lambda, double k, int cores, HitRun_Rater hitRunRater, int step, int length,
+			HitToSamConverter samConverter, DAA_Writer daaWriter, DAA_Writer_Slashes daaWriterSlashes, HitRun_Writer runWriter, double maxEValue,
+			int minSumScore, int minCoverage, boolean useFilters, boolean realign, File rej_file_2, double blockSize,
+			ReportAlignmentFiles aliReporter) {
 
 		this.allRuns = runs;
 		this.queryFile = queryFile;
@@ -113,7 +115,6 @@ public class Alignment_Completer {
 		rejectedRuns = new AtomicInteger(0);
 		reportedRuns = new AtomicInteger(0);
 		completedRuns = new AtomicInteger(0);
-		totalNumberOfRuns = allRuns.size();
 
 		// initializing AA-Mapper
 		String aaString = AA_Alphabet.getAaString();
@@ -133,11 +134,8 @@ public class Alignment_Completer {
 			dmndReader = new Dmnd_IndexReader(refFile, indexChunk, totalIndexChunks);
 			dmndReader.createIndex();
 
-			time = System.currentTimeMillis();
-			System.out.println("STEP_6>Computing " + allRuns.size() + " alignment(s)...");
-
 			// sorting all hit runs decreasingly after its sum score and reference coverage
-			Collections.sort(allRuns, new HitRun_Comparator());
+			// Collections.sort(allRuns, new HitRun_Comparator());
 
 			// alternately distributing runs on different alignment threads
 			Vector<Vector<Hit_Run>> runSubsets = new Vector<Vector<Hit_Run>>();
@@ -147,18 +145,25 @@ public class Alignment_Completer {
 			// for (int i = 0; i < allRuns.size(); i++) {
 			// // runSubsets.get(i % cores).add(0, allRuns.get(i));
 			// }
-			int runChunkSize = (int) Math.ceil((double) allRuns.size() / (double) cores);
-			int j = 0;
+			int runChunkSize = (int) Math.ceil((double) allRuns.keySet().size() / (double) cores);
+			int j = 0, readIDcounter = 0;
 			String lastReadID = "";
-			for (int i = 0; i < allRuns.size(); i++) {
-				String readID = allRuns.get(i).getReadID();
-				if (!runSubsets.get(j).isEmpty() && runSubsets.get(j).size() > runChunkSize && !lastReadID.equals(readID))
+			for (String readID : allRuns.keySet()) {
+				if (!runSubsets.get(j).isEmpty() && readIDcounter > runChunkSize && !lastReadID.equals(readID)) {
 					j++;
-				runSubsets.get(j).add(0, allRuns.get(i));
+					readIDcounter = 0;
+				}
+				runSubsets.get(j).addAll(0, allRuns.get(readID));
+				readIDcounter++;
 				lastReadID = readID;
 			}
-			for (int i = 0; i < cores; i++)
+			for (int i = 0; i < cores; i++) {
+				totalNumberOfRuns += runSubsets.get(i).size();
 				aliThreads.add(new Alignment_Thread(runSubsets.get(i)));
+			}
+
+			time = System.currentTimeMillis();
+			System.out.println("STEP_6>Computing " + totalNumberOfRuns + " alignment(s)...");
 
 			// running scorer in parallel
 			latch = new CountDownLatch(aliThreads.size());
@@ -242,11 +247,13 @@ public class Alignment_Completer {
 
 						// extracting new set of hits
 						Vector<Hit_Run> subset = new Vector<Hit_Run>();
+						String lastRead = "";
 						for (int i = runs.size() - 1; i >= 0; i--) {
 							Hit_Run run = runs.elementAt(i);
 							subset.add(run);
-							if (subset.size() % chunkSize == 0)
+							if (subset.size() > chunkSize && !lastRead.equals(run.getReadID()))
 								break;
+							lastRead = run.getReadID();
 						}
 
 						// loading GI Sequences
@@ -299,7 +306,10 @@ public class Alignment_Completer {
 								processedRuns++;
 
 								// System.out.println("4-----------------------");
-								// printRun(run, rafSAM, rafDAA);
+								if (run.getReadID().equals("NC-000913.3_1777423_aligned_3515_R_1_1301_3")){
+									System.out.println(giToSeq.get(run.getGi()));
+									printRun(run, rafSAM, rafDAA);									
+								}
 								// setRunHitInfo(run, rafSAM, rafDAA);
 								// checkRun(run, rafSAM, rafDAA, readIDToSeq.get(run.getReadID()));
 
@@ -443,13 +453,23 @@ public class Alignment_Completer {
 							StringBuffer aaSeq = new StringBuffer();
 							while ((readChars = raf.read(buffer.array())) != -1 && !doBreak) {
 								for (int r = 0; r < readChars; r++) {
-									int aaIndex = (int) buffer.get(r);
+									
+									// checking for end of sequence
+									int aaIndex = (int) buffer.get(r);	
 									if (doBreak = (aaIndex == -1))
 										break;
+									
+									// unmasking masked positions
+									byte b = buffer.get(r);
+									b &= ~(1 << 7);
+									aaIndex = (int) b;
+									
+									// loading amino acid
 									if (indexToAA.containsKey(aaIndex))
 										aaSeq = aaSeq.append(indexToAA.get(aaIndex));
 									else
 										aaSeq = aaSeq.append("X");
+									
 								}
 							}
 							giToSeq.put(gi, aaSeq.toString());
